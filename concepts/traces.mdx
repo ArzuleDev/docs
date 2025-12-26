@@ -1,0 +1,103 @@
+---
+title: "Traces"
+description: "Understanding how Arzule captures and structures agent execution data"
+---
+
+A **trace** represents a complete execution path through your multi-agent system. When you run a crew, pipeline, or any agent workflow, Arzule captures every action as a structured trace.
+
+## Trace structure
+
+Each trace consists of:
+
+- **Trace ID** - A unique 32-character hex identifier for the entire execution
+- **Spans** - Individual units of work within the trace
+- **Events** - Discrete actions that occur within spans
+
+```
+Trace (trace_id: abc123...)
+├── Span: crew.kickoff
+│   ├── Event: crew.kickoff.start
+│   ├── Span: agent.execution (Researcher)
+│   │   ├── Event: agent.execution.start
+│   │   ├── Span: tool.call (WebSearch)
+│   │   │   ├── Event: tool.call.start
+│   │   │   └── Event: tool.call.end
+│   │   └── Event: agent.execution.complete
+│   ├── Span: agent.execution (Writer)
+│   │   └── ...
+│   └── Event: crew.kickoff.complete
+```
+
+## Spans and parent relationships
+
+Spans represent units of work with a beginning and end. Each span has:
+
+- **span_id** - 16-character hex identifier
+- **parent_span_id** - Links to the parent span (null for root spans)
+
+This hierarchy lets you understand exactly how work flows through your agents.
+
+## Trace IDs vs Run IDs
+
+| ID Type | Purpose | Scope |
+|---------|---------|-------|
+| `trace_id` | Groups related spans/events | Single execution path |
+| `run_id` | Groups all traces in a run | Entire crew.kickoff() call |
+| `span_id` | Identifies a unit of work | Individual operation |
+
+A single `run_id` may contain multiple `trace_id` values if your agents spawn parallel work.
+
+## Viewing traces
+
+### In the dashboard
+
+The Arzule dashboard provides a visual timeline of your traces with:
+
+- Waterfall view of span timing
+- Event details and payloads
+- Error highlighting
+- Search and filtering
+
+### With the CLI
+
+View traces locally during development:
+
+```bash
+# Timeline view
+arzule view traces.jsonl
+
+# Table format
+arzule view traces.jsonl -f table
+
+# Statistics
+arzule stats traces.jsonl
+```
+
+## Trace data retention
+
+Traces are retained based on your plan:
+
+| Plan | Retention |
+|------|-----------|
+| Free | 7 days |
+| Pro | 30 days |
+| Enterprise | Configurable |
+
+<Note>
+Traces can be exported at any time before the retention period expires.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Events" icon="bolt" href="/concepts/events">
+  Learn about the specific event types Arzule captures.
+</Card>
+
+<Card title="Runs" icon="play" href="/concepts/runs">
+  Understand how runs group multiple traces together.
+</Card>
+
+</CardGroup>
+

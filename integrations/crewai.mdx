@@ -1,0 +1,188 @@
+---
+title: "CrewAI Integration"
+description: "Automatic instrumentation for CrewAI multi-agent applications"
+---
+
+Arzule provides seamless integration with CrewAI. With a single line of code, you get full observability into your crew executions.
+
+## Installation
+
+Install the SDK with CrewAI support:
+
+```bash
+pip install arzule-ingest[crewai]
+```
+
+## Quick setup
+
+Add one line before running your crew:
+
+```python
+import arzule_ingest
+
+arzule_ingest.init()
+
+# Your existing CrewAI code works unchanged
+result = crew.kickoff()
+```
+
+## What gets captured
+
+The CrewAI integration automatically captures:
+
+### Crew lifecycle
+- `crew.kickoff.start` - When the crew begins execution
+- `crew.kickoff.complete` - Successful completion with results
+- `crew.kickoff.failed` - Failures with error details
+
+### Agent execution
+- `agent.execution.start` - Each agent begins working
+- `agent.execution.complete` - Agent finishes its assignment
+- Agent role, goal, and backstory metadata
+
+### Task progress
+- `task.start` - Task execution begins
+- `task.complete` - Task finishes with output
+- `task.failed` - Task failures with error context
+- Task descriptions and expected outputs
+
+### Tool usage
+- `tool.call.start` - Tool invocation with inputs
+- `tool.call.end` - Tool results or errors
+- Tool names and execution timing
+
+### LLM interactions
+- `llm.call.start` - Prompts sent to the model
+- `llm.call.end` - Responses received
+- Token counts and latency metrics
+
+### Agent handoffs
+- `handoff.proposed` - One agent suggests handing to another
+- `handoff.ack` - Receiving agent accepts
+- `handoff.complete` - Handoff finishes
+
+## Example trace
+
+A typical CrewAI execution generates a trace like:
+
+```
+crew.kickoff.start
+├── agent.execution.start (Researcher)
+│   ├── llm.call.start
+│   ├── llm.call.end
+│   ├── tool.call.start (WebSearch)
+│   ├── tool.call.end
+│   ├── llm.call.start
+│   ├── llm.call.end
+│   └── agent.execution.complete
+├── handoff.proposed (Researcher → Writer)
+├── handoff.ack
+├── handoff.complete
+├── agent.execution.start (Writer)
+│   ├── llm.call.start
+│   ├── llm.call.end
+│   └── agent.execution.complete
+└── crew.kickoff.complete
+```
+
+## Advanced configuration
+
+### Manual instrumentation
+
+For more control, use the explicit instrumentation API:
+
+```python
+from arzule_ingest import ArzuleRun
+from arzule_ingest.sinks import HttpBatchSink
+from arzule_ingest.crewai import instrument_crewai
+
+# Instrument CrewAI (call once at startup)
+instrument_crewai()
+
+# Create a sink
+sink = HttpBatchSink(
+    endpoint_url="https://ingest.arzule.com",
+    api_key="your-api-key"
+)
+
+# Run your crew inside an explicit run context
+with ArzuleRun(
+    tenant_id="your-tenant-id",
+    project_id="your-project-id",
+    sink=sink
+) as run:
+    result = crew.kickoff()
+```
+
+### Local development
+
+Write traces to a local file during development:
+
+```python
+from arzule_ingest import ArzuleRun
+from arzule_ingest.sinks import JsonlFileSink
+from arzule_ingest.crewai import instrument_crewai
+
+instrument_crewai()
+
+sink = JsonlFileSink("traces/dev.jsonl")
+
+with ArzuleRun(
+    tenant_id="local",
+    project_id="dev",
+    sink=sink
+) as run:
+    result = crew.kickoff()
+```
+
+Then view the traces with the CLI:
+
+```bash
+arzule view traces/dev.jsonl
+```
+
+## Supported CrewAI versions
+
+| CrewAI Version | Support |
+|----------------|---------|
+| 0.80.0+ | Full support |
+| < 0.80.0 | Not supported |
+
+<Note>
+The SDK requires CrewAI 0.80.0 or higher. Earlier versions use a different internal architecture that we cannot instrument.
+</Note>
+
+## Troubleshooting
+
+### Traces not appearing
+
+1. Verify `arzule_ingest.init()` is called before `crew.kickoff()`
+2. Check your environment variables are set correctly
+3. Ensure network access to `ingest.arzule.com`
+
+### Missing tool calls
+
+Some custom tools may not be automatically instrumented. Wrap them with the `@arzule_ingest.trace` decorator for explicit tracking.
+
+### High latency
+
+The SDK batches events and sends them asynchronously. If you're seeing latency:
+
+1. Check your `ARZULE_BATCH_SIZE` setting
+2. Verify network connectivity
+3. Consider using a local file sink for development
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Complete getting started guide.
+</Card>
+
+<Card title="PII Redaction" icon="shield" href="/configuration/pii-redaction">
+  Protect sensitive data in traces.
+</Card>
+
+</CardGroup>
+

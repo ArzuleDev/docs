@@ -1,80 +1,164 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get traces flowing from your AI agents in under 5 minutes"
 ---
 
-## Get started in three steps
+This guide walks you through installing the Arzule SDK and capturing your first traces from a CrewAI application.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+- Python 3.10 or higher
+- A CrewAI application (or other supported agent framework)
+- An Arzule account with API credentials
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Step 1: Install the SDK
 
-### Step 2: Deploy your changes
+<CodeGroup>
+```bash pip
+pip install arzule-ingest[crewai]
+```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+```bash poetry
+poetry add arzule-ingest[crewai]
+```
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+```bash uv
+uv add arzule-ingest[crewai]
+```
+</CodeGroup>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+<Note>
+If you're not using CrewAI, install just the core SDK with `pip install arzule-ingest`.
+</Note>
 
-### Step 3: Go live
+## Step 2: Set environment variables
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+Configure your Arzule credentials. You can find these in your [Arzule dashboard](https://app.arzule.com).
+
+```bash
+export ARZULE_API_KEY="your-api-key"
+export ARZULE_TENANT_ID="your-tenant-id"
+export ARZULE_PROJECT_ID="your-project-id"
+```
+
+## Step 3: Initialize the SDK
+
+Add a single line to your application startup:
+
+```python
+import arzule_ingest
+
+# Initialize with environment variables
+arzule_ingest.init()
+```
+
+That's it. Your CrewAI code runs exactly as before, but now every execution is traced.
+
+## Step 4: Run your agent
+
+Execute your crew as normal:
+
+```python
+from crewai import Crew, Agent, Task
+
+# Define your agents and tasks
+researcher = Agent(
+    role="Researcher",
+    goal="Find accurate information",
+    backstory="You are a skilled researcher."
+)
+
+task = Task(
+    description="Research the latest developments in AI safety",
+    expected_output="A summary of key findings",
+    agent=researcher
+)
+
+crew = Crew(agents=[researcher], tasks=[task])
+
+# Run the crew - traces are captured automatically
+result = crew.kickoff()
+```
+
+## Step 5: View your traces
+
+Open your [Arzule dashboard](https://app.arzule.com) to see the captured traces. You'll see:
+
+- The complete execution timeline
+- Each agent's actions and decisions
+- Tool calls with inputs and outputs
+- LLM requests and responses
+
+## Full example
+
+Here's a complete working example:
+
+```python
+import os
+import arzule_ingest
+from crewai import Crew, Agent, Task
+
+# Set credentials (or use environment variables)
+os.environ["ARZULE_API_KEY"] = "your-api-key"
+os.environ["ARZULE_TENANT_ID"] = "your-tenant-id"
+os.environ["ARZULE_PROJECT_ID"] = "your-project-id"
+
+# Initialize Arzule
+arzule_ingest.init()
+
+# Your CrewAI application
+researcher = Agent(
+    role="Researcher",
+    goal="Find accurate information on any topic",
+    backstory="You are a meticulous researcher with attention to detail."
+)
+
+writer = Agent(
+    role="Writer",
+    goal="Create clear, engaging content",
+    backstory="You are a skilled technical writer."
+)
+
+research_task = Task(
+    description="Research the benefits of multi-agent AI systems",
+    expected_output="A bullet list of key benefits with examples",
+    agent=researcher
+)
+
+writing_task = Task(
+    description="Write a blog post based on the research",
+    expected_output="A 500-word blog post",
+    agent=writer
+)
+
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[research_task, writing_task]
+)
+
+# Execute - all traces captured automatically
+result = crew.kickoff()
+print(result)
+```
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
+<Card title="Learn about traces" icon="diagram-project" href="/concepts/traces">
+  Understand how Arzule structures trace data.
 </Card>
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
+<Card title="Configure PII redaction" icon="shield" href="/configuration/pii-redaction">
+  Control what sensitive data gets filtered.
 </Card>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
+<Card title="Local development" icon="laptop-code" href="/sdk/python/sinks">
+  Write traces to local files during development.
 </Card>
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
+<Card title="CLI tools" icon="terminal" href="/sdk/python/cli">
+  View and analyze traces from the command line.
 </Card>
 
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

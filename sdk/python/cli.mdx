@@ -1,0 +1,199 @@
+---
+title: "CLI Reference"
+description: "Command-line tools for viewing and analyzing traces"
+---
+
+The Arzule SDK includes a CLI for working with local trace files during development.
+
+## Installation
+
+The CLI is included with the SDK:
+
+```bash
+pip install arzule-ingest
+```
+
+Verify installation:
+
+```bash
+arzule --help
+```
+
+## Commands
+
+### `arzule view`
+
+Display traces from a JSONL file.
+
+```bash
+arzule view <file> [options]
+```
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `-f, --format` | Output format: `timeline` (default), `table`, `json` |
+| `--run-id` | Filter to a specific run ID |
+| `--event-type` | Filter by event type pattern |
+
+#### Examples
+
+```bash
+# Timeline view (default)
+arzule view traces.jsonl
+
+# Table format
+arzule view traces.jsonl -f table
+
+# JSON output (for piping to other tools)
+arzule view traces.jsonl -f json
+
+# Filter by run
+arzule view traces.jsonl --run-id abc123
+
+# Filter by event type
+arzule view traces.jsonl --event-type "tool.*"
+```
+
+#### Timeline output
+
+```
+Run: 550e8400-e29b-41d4-a716-446655440000
+Started: 2025-12-24T10:30:00.000Z
+
+10:30:00.000  run.start
+10:30:00.100  crew.kickoff.start
+10:30:00.150  ├── agent.execution.start [Researcher]
+10:30:00.200  │   ├── llm.call.start
+10:30:01.500  │   └── llm.call.end (1.3s)
+10:30:01.600  │   ├── tool.call.start [WebSearch]
+10:30:02.100  │   └── tool.call.end (0.5s)
+10:30:02.200  └── agent.execution.complete
+10:30:02.300  crew.kickoff.complete
+
+Duration: 2.3s | Events: 10
+```
+
+#### Table output
+
+```
+| Timestamp           | Event Type              | Agent      | Status |
+|---------------------|-------------------------|------------|--------|
+| 10:30:00.000        | run.start               | -          | ok     |
+| 10:30:00.100        | crew.kickoff.start      | -          | ok     |
+| 10:30:00.150        | agent.execution.start   | Researcher | ok     |
+| 10:30:00.200        | llm.call.start          | Researcher | -      |
+| 10:30:01.500        | llm.call.end            | Researcher | ok     |
+```
+
+### `arzule stats`
+
+Show statistics for a trace file.
+
+```bash
+arzule stats <file>
+```
+
+#### Output
+
+```
+Trace Statistics: traces.jsonl
+==============================
+
+Runs:           3
+Total Events:   847
+Time Range:     2025-12-24T10:00:00Z to 2025-12-24T11:30:00Z
+
+Events by Type:
+  run.start                  3
+  run.end                    3
+  crew.kickoff.start         3
+  crew.kickoff.complete      3
+  agent.execution.start     12
+  agent.execution.complete  12
+  tool.call.start           45
+  tool.call.end             45
+  llm.call.start           180
+  llm.call.end             180
+
+Agents:
+  Researcher    245 events
+  Writer        312 events
+  Reviewer      290 events
+
+Average Run Duration: 4m 32s
+Average Events/Run:   282
+```
+
+### `arzule validate`
+
+Validate that a trace file conforms to the schema.
+
+```bash
+arzule validate <file>
+```
+
+#### Output
+
+```
+Validating: traces.jsonl
+
+Checked 847 events
+Schema version: trace_event.v0_1
+Status: VALID
+
+No errors found.
+```
+
+Or with errors:
+
+```
+Validating: traces.jsonl
+
+Checked 847 events
+Status: INVALID
+
+Errors:
+  Line 234: Missing required field 'trace_id'
+  Line 567: Invalid event_type 'unknown.event'
+
+2 errors found.
+```
+
+## Piping and scripting
+
+The CLI works well with Unix pipes:
+
+```bash
+# Count events by type
+arzule view traces.jsonl -f json | jq '.event_type' | sort | uniq -c
+
+# Extract specific run
+arzule view traces.jsonl -f json --run-id abc123 > run_abc123.json
+
+# Filter tool calls
+arzule view traces.jsonl -f json | jq 'select(.event_type | startswith("tool."))'
+```
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `ARZULE_CLI_COLOR` | Enable/disable colored output (`true`/`false`) |
+| `ARZULE_CLI_PAGER` | Pager program for long output (default: `less`) |
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Sinks" icon="database" href="/sdk/python/sinks">
+  Write traces to local files.
+</Card>
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Get started with trace collection.
+</Card>
+
+</CardGroup>
+

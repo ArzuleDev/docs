@@ -1,97 +1,65 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Arzule Documentation"
+description: "Observability and tracing for multi-agent AI systems"
 ---
 
-## Setting up
+Arzule provides complete visibility into your AI agent workflows. Automatically capture traces, detect anomalies, and debug agent behavior across your entire system.
 
-Get your documentation site up and running in minutes.
+## Why Arzule?
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
+Multi-agent systems are complex. When agents hand off work, make tool calls, or interact with LLMs, understanding what happened and why is critical. Arzule gives you:
+
+- **Automatic trace capture** - Instrument once, capture everything
+- **Full execution visibility** - See every agent action, tool call, and LLM request
+- **PII protection** - Automatic redaction of sensitive data before it leaves your system
+- **SOC2 compliance** - Built-in encryption and audit logging
+
+## Get started
+
+<CardGroup cols={2}>
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Get traces flowing in under 5 minutes with our Python SDK.
 </Card>
 
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
+<Card title="Installation" icon="download" href="/installation">
+  Install the SDK and configure your environment.
 </Card>
+
+<Card title="CrewAI Integration" icon="users" href="/integrations/crewai">
+  Automatic instrumentation for CrewAI agents.
+</Card>
+
+<Card title="Concepts" icon="book" href="/concepts/traces">
+  Learn how traces, spans, and events work together.
+</Card>
+
+</CardGroup>
+
+## How it works
+
+```python
+import arzule_ingest
+
+# Initialize once at startup
+arzule_ingest.init()
+
+# Your agent code runs as normal - traces are captured automatically
+result = crew.kickoff(inputs={"topic": "AI safety"})
+```
+
+Every agent execution, tool call, and LLM request is captured as a trace event and sent to Arzule for analysis.
+
+## What gets captured
+
+The SDK automatically captures the complete lifecycle of your agent runs:
+
+| Event Type | Description |
+|------------|-------------|
+| `run.start` / `run.end` | Run lifecycle boundaries |
+| `crew.kickoff.*` | Crew execution start, complete, and failures |
+| `agent.execution.*` | Individual agent activity |
+| `task.*` | Task progress and completion |
+| `tool.call.*` | Tool invocations and results |
+| `llm.call.*` | LLM requests and responses |
+| `handoff.*` | Agent-to-agent handoffs |

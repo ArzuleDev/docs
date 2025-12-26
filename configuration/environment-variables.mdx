@@ -1,0 +1,163 @@
+---
+title: "Environment Variables"
+description: "Complete reference for Arzule SDK configuration"
+---
+
+The Arzule SDK is configured primarily through environment variables. This provides a secure, consistent way to manage credentials across environments.
+
+## Required variables
+
+These must be set for the SDK to send traces to Arzule:
+
+| Variable | Description |
+|----------|-------------|
+| `ARZULE_API_KEY` | Your API key for authentication |
+| `ARZULE_TENANT_ID` | Your tenant identifier |
+| `ARZULE_PROJECT_ID` | The project to associate traces with |
+
+## Optional variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ARZULE_INGEST_URL` | Ingest endpoint URL | `https://ingest.arzule.com` |
+| `ARZULE_BATCH_SIZE` | Number of events per batch | `100` |
+| `ARZULE_FLUSH_INTERVAL` | Seconds between batch flushes | `5` |
+| `ARZULE_REDACT_SECRETS` | Enable PII/secret redaction | `true` |
+| `ARZULE_DEBUG` | Enable debug logging | `false` |
+
+## Setting environment variables
+
+### Shell (temporary)
+
+```bash
+export ARZULE_API_KEY="arz_live_abc123..."
+export ARZULE_TENANT_ID="550e8400-e29b-41d4-a716-446655440000"
+export ARZULE_PROJECT_ID="660e8400-e29b-41d4-a716-446655440000"
+```
+
+### .env file
+
+Create a `.env` file in your project root:
+
+```bash
+ARZULE_API_KEY=arz_live_abc123...
+ARZULE_TENANT_ID=550e8400-e29b-41d4-a716-446655440000
+ARZULE_PROJECT_ID=660e8400-e29b-41d4-a716-446655440000
+```
+
+Load it with `python-dotenv`:
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+
+import arzule_ingest
+arzule_ingest.init()
+```
+
+<Warning>
+Never commit `.env` files to version control. Add `.env` to your `.gitignore`.
+</Warning>
+
+### Docker
+
+```dockerfile
+ENV ARZULE_API_KEY=arz_live_abc123...
+ENV ARZULE_TENANT_ID=550e8400-e29b-41d4-a716-446655440000
+ENV ARZULE_PROJECT_ID=660e8400-e29b-41d4-a716-446655440000
+```
+
+Or pass at runtime:
+
+```bash
+docker run -e ARZULE_API_KEY=... -e ARZULE_TENANT_ID=... your-image
+```
+
+### Kubernetes
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: arzule-credentials
+type: Opaque
+stringData:
+  api-key: "arz_live_abc123..."
+---
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          env:
+            - name: ARZULE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: arzule-credentials
+                  key: api-key
+            - name: ARZULE_TENANT_ID
+              value: "550e8400-e29b-41d4-a716-446655440000"
+            - name: ARZULE_PROJECT_ID
+              value: "660e8400-e29b-41d4-a716-446655440000"
+```
+
+## Programmatic override
+
+Environment variables can be overridden in code:
+
+```python
+import arzule_ingest
+
+arzule_ingest.init(
+    api_key="override-key",  # Overrides ARZULE_API_KEY
+    batch_size=50,           # Overrides ARZULE_BATCH_SIZE
+    redact_secrets=False,    # Overrides ARZULE_REDACT_SECRETS
+)
+```
+
+## Environment-specific configuration
+
+Use different credentials per environment:
+
+```bash
+# development
+export ARZULE_PROJECT_ID="dev-project-id"
+
+# staging
+export ARZULE_PROJECT_ID="staging-project-id"
+
+# production
+export ARZULE_PROJECT_ID="prod-project-id"
+```
+
+This keeps traces separated by environment while using the same codebase.
+
+## Verifying configuration
+
+Check your configuration is correct:
+
+```python
+import os
+
+# Print current config (redact the key in logs)
+print(f"Tenant: {os.getenv('ARZULE_TENANT_ID')}")
+print(f"Project: {os.getenv('ARZULE_PROJECT_ID')}")
+print(f"API Key set: {bool(os.getenv('ARZULE_API_KEY'))}")
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="PII Redaction" icon="shield" href="/configuration/pii-redaction">
+  Configure what sensitive data gets filtered.
+</Card>
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Start capturing traces.
+</Card>
+
+</CardGroup>
+

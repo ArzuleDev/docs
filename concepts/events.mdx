@@ -1,0 +1,144 @@
+---
+title: "Events"
+description: "The discrete actions captured within traces"
+---
+
+Events are the atomic units of observability in Arzule. Every action your agents take is recorded as a structured event.
+
+## Event format
+
+All events follow the `trace_event.v0_1` schema:
+
+```json
+{
+  "schema_version": "trace_event.v0_1",
+  "run_id": "550e8400-e29b-41d4-a716-446655440000",
+  "tenant_id": "your-tenant-id",
+  "project_id": "your-project-id",
+  "trace_id": "a1b2c3d4e5f6789012345678abcdef01",
+  "span_id": "1234567890abcdef",
+  "parent_span_id": "0987654321fedcba",
+  "seq": 42,
+  "ts": "2025-12-24T07:12:03.123Z",
+  "agent": {
+    "id": "crewai:role:Researcher",
+    "role": "Researcher"
+  },
+  "event_type": "tool.call.start",
+  "status": "ok",
+  "summary": "Calling WebSearch tool",
+  "attrs_compact": {
+    "tool_name": "WebSearch",
+    "query": "AI safety research papers 2025"
+  }
+}
+```
+
+## Event types
+
+### Run lifecycle
+
+| Event | Description |
+|-------|-------------|
+| `run.start` | A new run has begun |
+| `run.end` | The run has completed |
+
+### Crew execution
+
+| Event | Description |
+|-------|-------------|
+| `crew.kickoff.start` | Crew execution starting |
+| `crew.kickoff.complete` | Crew finished successfully |
+| `crew.kickoff.failed` | Crew execution failed with error |
+
+### Agent activity
+
+| Event | Description |
+|-------|-------------|
+| `agent.execution.start` | An agent began working |
+| `agent.execution.complete` | An agent finished its work |
+
+### Task progress
+
+| Event | Description |
+|-------|-------------|
+| `task.start` | A task began execution |
+| `task.complete` | A task finished successfully |
+| `task.failed` | A task failed with error |
+
+### Tool calls
+
+| Event | Description |
+|-------|-------------|
+| `tool.call.start` | A tool invocation began |
+| `tool.call.end` | A tool invocation completed |
+
+### LLM calls
+
+| Event | Description |
+|-------|-------------|
+| `llm.call.start` | An LLM request was sent |
+| `llm.call.end` | An LLM response was received |
+
+### Handoffs
+
+| Event | Description |
+|-------|-------------|
+| `handoff.proposed` | An agent proposed handing off to another |
+| `handoff.ack` | The receiving agent acknowledged the handoff |
+| `handoff.complete` | The handoff finished |
+
+## Event attributes
+
+Events include contextual data in `attrs_compact`:
+
+```json
+{
+  "event_type": "llm.call.end",
+  "attrs_compact": {
+    "model": "gpt-4",
+    "prompt_tokens": 1250,
+    "completion_tokens": 456,
+    "latency_ms": 2340
+  }
+}
+```
+
+Common attributes by event type:
+
+| Event Type | Common Attributes |
+|------------|-------------------|
+| `tool.call.*` | `tool_name`, `inputs`, `outputs` |
+| `llm.call.*` | `model`, `prompt_tokens`, `completion_tokens`, `latency_ms` |
+| `task.*` | `task_id`, `description`, `agent_role` |
+| `handoff.*` | `from_agent`, `to_agent`, `reason` |
+
+## Status values
+
+The `status` field indicates the outcome:
+
+| Status | Meaning |
+|--------|---------|
+| `ok` | Completed successfully |
+| `error` | Failed with an error |
+| `blocked` | Blocked by a policy or constraint |
+| `null` | Status not yet determined (for start events) |
+
+## Sequence numbers
+
+The `seq` field is a monotonically increasing integer that orders events within a run. This guarantees you can always reconstruct the exact sequence of events, even if timestamps have clock skew.
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Traces" icon="diagram-project" href="/concepts/traces">
+  See how events combine into traces.
+</Card>
+
+<Card title="PII Redaction" icon="shield" href="/configuration/pii-redaction">
+  Control what data appears in event attributes.
+</Card>
+
+</CardGroup>
+

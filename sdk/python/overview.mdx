@@ -1,0 +1,152 @@
+---
+title: "Python SDK Overview"
+description: "Reference documentation for the Arzule Python SDK"
+---
+
+The `arzule-ingest` package provides everything you need to capture traces from your Python-based AI agents.
+
+## Installation
+
+```bash
+pip install arzule-ingest
+```
+
+With optional dependencies:
+
+```bash
+pip install arzule-ingest[crewai]   # CrewAI integration
+pip install arzule-ingest[soc2]     # SOC2 compliance features
+pip install arzule-ingest[all]      # Everything
+```
+
+## Core API
+
+### `arzule_ingest.init()`
+
+Initialize the SDK with automatic instrumentation:
+
+```python
+import arzule_ingest
+
+arzule_ingest.init(
+    api_key="...",       # Optional: defaults to ARZULE_API_KEY env var
+    tenant_id="...",     # Optional: defaults to ARZULE_TENANT_ID env var
+    project_id="...",    # Optional: defaults to ARZULE_PROJECT_ID env var
+    redact_secrets=True, # Optional: enable PII redaction
+    batch_size=100,      # Optional: events per batch
+)
+```
+
+### `ArzuleRun`
+
+Context manager for manual run control:
+
+```python
+from arzule_ingest import ArzuleRun
+from arzule_ingest.sinks import JsonlFileSink
+
+with ArzuleRun(
+    tenant_id="...",
+    project_id="...",
+    sink=JsonlFileSink("traces.jsonl")
+) as run:
+    # Your agent code here
+    print(f"Run ID: {run.run_id}")
+```
+
+## Sinks
+
+Sinks determine where trace events are sent:
+
+| Sink | Purpose |
+|------|---------|
+| `HttpBatchSink` | Send to Arzule cloud (default) |
+| `JsonlFileSink` | Write to local JSONL file |
+| `CompositeSink` | Send to multiple destinations |
+
+```python
+from arzule_ingest.sinks import JsonlFileSink, HttpBatchSink, CompositeSink
+
+# Local file
+file_sink = JsonlFileSink("traces.jsonl")
+
+# Remote endpoint
+http_sink = HttpBatchSink(
+    endpoint_url="https://ingest.arzule.com",
+    api_key="..."
+)
+
+# Both at once
+multi_sink = CompositeSink([file_sink, http_sink])
+```
+
+## Framework integrations
+
+### CrewAI
+
+```python
+from arzule_ingest.crewai import instrument_crewai
+
+# Call once at startup
+instrument_crewai()
+```
+
+Or use the automatic approach:
+
+```python
+import arzule_ingest
+arzule_ingest.init()  # Auto-detects and instruments CrewAI
+```
+
+## CLI
+
+The SDK includes a command-line tool:
+
+```bash
+# View traces
+arzule view traces.jsonl
+
+# Show statistics
+arzule stats traces.jsonl
+```
+
+## Module structure
+
+```
+arzule_ingest/
+├── __init__.py      # init(), version
+├── run.py           # ArzuleRun context manager
+├── sinks/           # Output destinations
+│   ├── base.py      # BaseSink interface
+│   ├── http.py      # HttpBatchSink
+│   ├── jsonl.py     # JsonlFileSink
+│   └── composite.py # CompositeSink
+├── crewai/          # CrewAI integration
+│   └── normalize.py # Event normalization
+├── redaction.py     # PII redaction
+├── ids.py           # ID generation
+└── cli.py           # Command-line interface
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="ArzuleRun" icon="play" href="/sdk/python/arzule-run">
+  Detailed API reference for run management.
+</Card>
+
+<Card title="Sinks" icon="database" href="/sdk/python/sinks">
+  Configure where traces are sent.
+</Card>
+
+<Card title="CLI" icon="terminal" href="/sdk/python/cli">
+  Command-line tools reference.
+</Card>
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Get started in 5 minutes.
+</Card>
+
+</CardGroup>
+

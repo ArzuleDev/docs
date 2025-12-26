@@ -1,0 +1,119 @@
+---
+title: "Runs"
+description: "Grouping traces for complete execution visibility"
+---
+
+A **run** represents a complete execution of your agent system, from start to finish. When you call `crew.kickoff()`, Arzule creates a run that contains all traces generated during that execution.
+
+## Run vs trace
+
+| Concept | Scope | Example |
+|---------|-------|---------|
+| Run | Complete execution | One `crew.kickoff()` call |
+| Trace | Single execution path | One agent's work |
+| Span | Unit of work | One tool call |
+| Event | Atomic action | Tool call started |
+
+A single run typically contains one primary trace, but may include multiple traces if agents spawn parallel work.
+
+## Run lifecycle
+
+```
+Run Created
+    │
+    ├── run.start event
+    │
+    ├── Trace 1: Main crew execution
+    │   ├── Agent 1 spans and events
+    │   └── Agent 2 spans and events
+    │
+    ├── (Optional) Trace 2: Parallel work
+    │   └── ...
+    │
+    ├── run.end event
+    │
+Run Complete
+```
+
+## Creating runs
+
+### Automatic (recommended)
+
+When you call `arzule_ingest.init()`, runs are created automatically:
+
+```python
+import arzule_ingest
+
+arzule_ingest.init()
+
+# Each kickoff creates a new run
+result = crew.kickoff()  # Run 1
+result = crew.kickoff()  # Run 2
+```
+
+### Manual control
+
+For more control, use the `ArzuleRun` context manager:
+
+```python
+from arzule_ingest import ArzuleRun
+from arzule_ingest.sinks import JsonlFileSink
+
+sink = JsonlFileSink("traces.jsonl")
+
+with ArzuleRun(
+    tenant_id="your-tenant-id",
+    project_id="your-project-id",
+    sink=sink
+) as run:
+    # Everything inside this block is part of this run
+    result = crew.kickoff()
+    
+    # Access the run_id if needed
+    print(f"Run ID: {run.run_id}")
+```
+
+## Run metadata
+
+Each run includes:
+
+| Field | Description |
+|-------|-------------|
+| `run_id` | UUID identifying the run |
+| `tenant_id` | Your tenant identifier |
+| `project_id` | The project this run belongs to |
+| `started_at` | Timestamp when the run began |
+| `ended_at` | Timestamp when the run completed |
+| `status` | Final status (success, error, etc.) |
+
+## Viewing runs
+
+In the Arzule dashboard, runs are the primary navigation unit. You can:
+
+- Filter runs by date range, status, or project
+- See run duration and event counts
+- Drill into individual traces within a run
+- Compare runs to identify regressions
+
+## Run isolation
+
+Each run is isolated. Events from one run never mix with another, even if runs execute concurrently. This is guaranteed by:
+
+1. Unique `run_id` per execution
+2. Monotonic `seq` numbers within each run
+3. Thread-safe event collection
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Traces" icon="diagram-project" href="/concepts/traces">
+  Learn how traces structure data within runs.
+</Card>
+
+<Card title="ArzuleRun API" icon="code" href="/sdk/python/arzule-run">
+  Full API reference for manual run control.
+</Card>
+
+</CardGroup>
+
