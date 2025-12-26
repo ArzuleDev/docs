@@ -32,7 +32,9 @@
           {
             "group": "Integrations",
             "pages": [
-              "integrations/crewai"
+              "integrations/crewai",
+              "integrations/langchain",
+              "integrations/autogen"
             ]
           },
           {

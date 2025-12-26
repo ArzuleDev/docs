@@ -3,32 +3,66 @@ title: "Quickstart"
 description: "Get traces flowing from your AI agents in under 5 minutes"
 ---
 
-This guide walks you through installing the Arzule SDK and capturing your first traces from a CrewAI application.
+This guide walks you through installing the Arzule SDK and capturing your first traces from your agent application.
 
 ## Prerequisites
 
 - Python 3.10 or higher
-- A CrewAI application (or other supported agent framework)
+- An agent framework (CrewAI, LangChain, or AutoGen)
 - An Arzule account with API credentials
 
 ## Step 1: Install the SDK
 
-<CodeGroup>
-```bash pip
-pip install arzule-ingest[crewai]
-```
+<Tabs>
+  <Tab title="CrewAI">
+    <CodeGroup>
+    ```bash pip
+    pip install arzule-ingest[crewai]
+    ```
 
-```bash poetry
-poetry add arzule-ingest[crewai]
-```
+    ```bash poetry
+    poetry add arzule-ingest[crewai]
+    ```
 
-```bash uv
-uv add arzule-ingest[crewai]
-```
-</CodeGroup>
+    ```bash uv
+    uv add arzule-ingest[crewai]
+    ```
+    </CodeGroup>
+  </Tab>
+  <Tab title="LangChain">
+    <CodeGroup>
+    ```bash pip
+    pip install arzule-ingest[langchain]
+    ```
+
+    ```bash poetry
+    poetry add arzule-ingest[langchain]
+    ```
+
+    ```bash uv
+    uv add arzule-ingest[langchain]
+    ```
+    </CodeGroup>
+  </Tab>
+  <Tab title="AutoGen">
+    <CodeGroup>
+    ```bash pip
+    pip install arzule-ingest[autogen]
+    ```
+
+    ```bash poetry
+    poetry add arzule-ingest[autogen]
+    ```
+
+    ```bash uv
+    uv add arzule-ingest[autogen]
+    ```
+    </CodeGroup>
+  </Tab>
+</Tabs>
 
 <Note>
-If you're not using CrewAI, install just the core SDK with `pip install arzule-ingest`.
+For core SDK without framework extras: `pip install arzule-ingest`
 </Note>
 
 ## Step 2: Set environment variables
@@ -41,46 +75,104 @@ export ARZULE_TENANT_ID="your-tenant-id"
 export ARZULE_PROJECT_ID="your-project-id"
 ```
 
-## Step 3: Initialize the SDK
+## Step 3: Initialize and run
 
-Add a single line to your application startup:
+<Tabs>
+  <Tab title="CrewAI">
+    Add a single line to your application startup:
 
-```python
-import arzule_ingest
+    ```python
+    import arzule_ingest
+    from crewai import Crew, Agent, Task
 
-# Initialize with environment variables
-arzule_ingest.init()
-```
+    # Initialize with environment variables
+    arzule_ingest.init()
 
-That's it. Your CrewAI code runs exactly as before, but now every execution is traced.
+    # Your existing CrewAI code works unchanged
+    researcher = Agent(
+        role="Researcher",
+        goal="Find accurate information",
+        backstory="You are a skilled researcher."
+    )
 
-## Step 4: Run your agent
+    task = Task(
+        description="Research the latest developments in AI safety",
+        expected_output="A summary of key findings",
+        agent=researcher
+    )
 
-Execute your crew as normal:
+    crew = Crew(agents=[researcher], tasks=[task])
 
-```python
-from crewai import Crew, Agent, Task
+    # Run the crew - traces are captured automatically
+    result = crew.kickoff()
+    ```
+  </Tab>
+  <Tab title="LangChain">
+    Get the callback handler and pass it to your chain:
 
-# Define your agents and tasks
-researcher = Agent(
-    role="Researcher",
-    goal="Find accurate information",
-    backstory="You are a skilled researcher."
-)
+    ```python
+    from arzule_ingest.langchain import instrument_langchain
+    from arzule_ingest import ArzuleRun
+    from arzule_ingest.sinks import HttpBatchSink
+    from langchain_openai import ChatOpenAI
+    from langchain_core.prompts import ChatPromptTemplate
 
-task = Task(
-    description="Research the latest developments in AI safety",
-    expected_output="A summary of key findings",
-    agent=researcher
-)
+    # Get the callback handler
+    handler = instrument_langchain()
 
-crew = Crew(agents=[researcher], tasks=[task])
+    # Create sink with environment variables
+    sink = HttpBatchSink()
 
-# Run the crew - traces are captured automatically
-result = crew.kickoff()
-```
+    # Your LangChain code
+    llm = ChatOpenAI(model="gpt-4")
+    prompt = ChatPromptTemplate.from_template("Tell me about {topic}")
+    chain = prompt | llm
 
-## Step 5: View your traces
+    # Run inside ArzuleRun context with the handler
+    with ArzuleRun(sink=sink) as run:
+        result = chain.invoke(
+            {"topic": "AI safety"},
+            config={"callbacks": [handler]}
+        )
+    ```
+  </Tab>
+  <Tab title="AutoGen">
+    Call instrument once at startup:
+
+    ```python
+    from arzule_ingest.autogen import instrument_autogen
+    from arzule_ingest import ArzuleRun
+    from arzule_ingest.sinks import HttpBatchSink
+    from autogen import AssistantAgent, UserProxyAgent
+
+    # Instrument AutoGen (call once at startup)
+    instrument_autogen()
+
+    # Create sink with environment variables
+    sink = HttpBatchSink()
+
+    # Your AutoGen code
+    assistant = AssistantAgent(
+        name="assistant",
+        llm_config={"model": "gpt-4"}
+    )
+
+    user_proxy = UserProxyAgent(
+        name="user_proxy",
+        human_input_mode="NEVER"
+    )
+
+    # Run inside ArzuleRun context
+    with ArzuleRun(sink=sink) as run:
+        user_proxy.initiate_chat(
+            assistant,
+            message="What are the benefits of multi-agent systems?"
+        )
+    ```
+  </Tab>
+</Tabs>
+
+## Step 4: View your traces
 
 Open your [Arzule dashboard](https://app.arzule.com) to see the captured traces. You'll see:
 
@@ -89,76 +181,45 @@ Open your [Arzule dashboard](https://app.arzule.com) to see the captured traces.
 - Tool calls with inputs and outputs
 - LLM requests and responses
 
-## Full example
+## Local development
 
-Here's a complete working example:
+During development, write traces to a local file instead of the cloud:
 
 ```python
-import os
-import arzule_ingest
-from crewai import Crew, Agent, Task
+from arzule_ingest import ArzuleRun
+from arzule_ingest.sinks import JsonlFileSink
 
-# Set credentials (or use environment variables)
-os.environ["ARZULE_API_KEY"] = "your-api-key"
-os.environ["ARZULE_TENANT_ID"] = "your-tenant-id"
-os.environ["ARZULE_PROJECT_ID"] = "your-project-id"
+sink = JsonlFileSink("traces/dev.jsonl")
 
-# Initialize Arzule
-arzule_ingest.init()
+with ArzuleRun(tenant_id="local", project_id="dev", sink=sink) as run:
+    # Your agent code here
+    pass
+```
 
-# Your CrewAI application
-researcher = Agent(
-    role="Researcher",
-    goal="Find accurate information on any topic",
-    backstory="You are a meticulous researcher with attention to detail."
-)
+View traces with the CLI:
 
-writer = Agent(
-    role="Writer",
-    goal="Create clear, engaging content",
-    backstory="You are a skilled technical writer."
-)
-
-research_task = Task(
-    description="Research the benefits of multi-agent AI systems",
-    expected_output="A bullet list of key benefits with examples",
-    agent=researcher
-)
-
-writing_task = Task(
-    description="Write a blog post based on the research",
-    expected_output="A 500-word blog post",
-    agent=writer
-)
-
-crew = Crew(
-    agents=[researcher, writer],
-    tasks=[research_task, writing_task]
-)
-
-# Execute - all traces captured automatically
-result = crew.kickoff()
-print(result)
+```bash
+arzule view traces/dev.jsonl
 ```
 
 ## Next steps
 
 <CardGroup cols={2}>
 
-<Card title="Learn about traces" icon="diagram-project" href="/concepts/traces">
-  Understand how Arzule structures trace data.
+<Card title="CrewAI Integration" icon="users" href="/integrations/crewai">
+  Full CrewAI instrumentation guide.
+</Card>
+
+<Card title="LangChain Integration" icon="link" href="/integrations/langchain">
+  Full LangChain instrumentation guide.
+</Card>
+
+<Card title="AutoGen Integration" icon="robot" href="/integrations/autogen">
+  Full AutoGen instrumentation guide.
 </Card>
 
 <Card title="Configure PII redaction" icon="shield" href="/configuration/pii-redaction">
   Control what sensitive data gets filtered.
-</Card>
-
-<Card title="Local development" icon="laptop-code" href="/sdk/python/sinks">
-  Write traces to local files during development.
-</Card>
-
-<Card title="CLI tools" icon="terminal" href="/sdk/python/cli">
-  View and analyze traces from the command line.
 </Card>
 
 </CardGroup>
