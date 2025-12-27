@@ -10,42 +10,24 @@ description: "Install and configure the Arzule Python SDK"
 
 ## Install the SDK
 
-Choose the installation method that matches your project setup:
+The SDK includes all framework integrations (CrewAI, LangChain, AutoGen) by default:
 
 <Tabs>
 <Tab title="pip">
 ```bash
-# Core SDK only
 pip install arzule-ingest
-
-# With CrewAI integration
-pip install arzule-ingest[crewai]
-
-# With SOC2 compliance features (encryption at rest)
-pip install arzule-ingest[soc2]
-
-# Full installation with all optional dependencies
-pip install arzule-ingest[all]
 ```
 </Tab>
 
 <Tab title="poetry">
 ```bash
-# Core SDK only
 poetry add arzule-ingest
-
-# With CrewAI integration
-poetry add arzule-ingest[crewai]
 ```
 </Tab>
 
 <Tab title="uv">
 ```bash
-# Core SDK only
 uv add arzule-ingest
-
-# With CrewAI integration
-uv add arzule-ingest[crewai]
 ```
 </Tab>
 </Tabs>
@@ -95,13 +77,14 @@ import arzule_ingest
 print(arzule_ingest.__version__)
 ```
 
-## Optional dependencies
+## What's included
 
-| Extra | Purpose |
-|-------|---------|
-| `crewai` | Automatic instrumentation for CrewAI agents |
-| `soc2` | Encryption at rest for trace files (requires `cryptography`) |
-| `all` | Includes all optional dependencies |
+The SDK includes support for all major agent frameworks out of the box:
+
+- **CrewAI** - Automatic instrumentation for CrewAI agents
+- **LangChain / LangGraph** - Callback-based tracing for chains and agents  
+- **AutoGen** - Automatic instrumentation for Microsoft AutoGen
+- **SOC2 compliance** - Encryption at rest for trace files
 
 ## Next steps
 

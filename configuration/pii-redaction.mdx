@@ -118,13 +118,13 @@ These fields will never be redacted, even if they match a pattern.
 
 ## SOC2 compliance
 
-For SOC2 compliance, the `[soc2]` extra provides additional protections:
+The SDK includes SOC2 compliance features by default:
 
 ```bash
-pip install arzule-ingest[soc2]
+pip install arzule-ingest
 ```
 
-This adds:
+This includes:
 
 - Encryption at rest for local trace files
 - Enhanced audit logging

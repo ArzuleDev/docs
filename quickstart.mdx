@@ -13,56 +13,22 @@ This guide walks you through installing the Arzule SDK and capturing your first 
 
 ## Step 1: Install the SDK
 
-<Tabs>
-  <Tab title="CrewAI">
-    <CodeGroup>
-    ```bash pip
-    pip install arzule-ingest[crewai]
-    ```
+<CodeGroup>
+```bash pip
+pip install arzule-ingest
+```
 
-    ```bash poetry
-    poetry add arzule-ingest[crewai]
-    ```
+```bash poetry
+poetry add arzule-ingest
+```
 
-    ```bash uv
-    uv add arzule-ingest[crewai]
-    ```
-    </CodeGroup>
-  </Tab>
-  <Tab title="LangChain">
-    <CodeGroup>
-    ```bash pip
-    pip install arzule-ingest[langchain]
-    ```
-
-    ```bash poetry
-    poetry add arzule-ingest[langchain]
-    ```
-
-    ```bash uv
-    uv add arzule-ingest[langchain]
-    ```
-    </CodeGroup>
-  </Tab>
-  <Tab title="AutoGen">
-    <CodeGroup>
-    ```bash pip
-    pip install arzule-ingest[autogen]
-    ```
-
-    ```bash poetry
-    poetry add arzule-ingest[autogen]
-    ```
-
-    ```bash uv
-    uv add arzule-ingest[autogen]
-    ```
-    </CodeGroup>
-  </Tab>
-</Tabs>
+```bash uv
+uv add arzule-ingest
+```
+</CodeGroup>
 
 <Note>
-For core SDK without framework extras: `pip install arzule-ingest`
+This installs support for CrewAI, LangChain, and AutoGen out of the box.
 </Note>
 
 ## Step 2: Set environment variables
