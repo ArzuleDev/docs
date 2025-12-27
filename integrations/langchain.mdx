@@ -13,23 +13,24 @@ pip install arzule-ingest
 
 ## Quick setup
 
-Add instrumentation before running your chain:
+Add two lines at the top of your script to get the callback handler:
 
-```python
-from arzule_ingest.langchain import instrument_langchain
-from arzule_ingest import ArzuleRun
-from arzule_ingest.sinks import JsonlFileSink
+```python {1,2,12}
+import arzule_ingest
+handler = arzule_ingest.langchain.instrument_langchain()
 
-# Get the callback handler (call once at startup)
-handler = instrument_langchain()
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
 
-# Create a sink
-sink = JsonlFileSink("traces/dev.jsonl")
+llm = ChatOpenAI(model="gpt-4")
+prompt = ChatPromptTemplate.from_template("Tell me about {topic}")
+chain = prompt | llm
 
-# Run your chain with the handler in an ArzuleRun context
-with ArzuleRun(tenant_id="...", project_id="...", sink=sink) as run:
-    result = chain.invoke({"input": "..."}, config={"callbacks": [handler]})
+# Pass the handler to capture traces
+result = chain.invoke({"topic": "AI safety"}, config={"callbacks": [handler]})
 ```
+
+That's it - traces flow to Arzule automatically when you run your script.
 
 ## What gets captured
 
