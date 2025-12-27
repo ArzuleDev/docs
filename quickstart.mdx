@@ -33,7 +33,7 @@ This installs support for CrewAI, LangChain, and AutoGen out of the box.
 
 ## Step 2: Set environment variables
 
-Configure your Arzule credentials. You can find these in your [Arzule dashboard](https://app.arzule.com).
+Configure your Arzule credentials. You can find these in your [Arzule dashboard settings](https://app.arzule.com/dashboard/settings).
 
 ```bash
 export ARZULE_API_KEY="your-api-key"
@@ -43,11 +43,13 @@ export ARZULE_PROJECT_ID="your-project-id"
 
 ## Step 3: Initialize and run
 
+Add the following to your main application file (e.g., `main.py` or `app.py`):
+
 <Tabs>
   <Tab title="CrewAI">
     Add a single line to your application startup:
 
-    ```python
+    ```python {1,5}
     import arzule_ingest
     from crewai import Crew, Agent, Task
 
@@ -76,7 +78,7 @@ export ARZULE_PROJECT_ID="your-project-id"
   <Tab title="LangChain">
     Get the callback handler and pass it to your chain:
 
-    ```python
+    ```python {1-3,8,11,19}
     from arzule_ingest.langchain import instrument_langchain
     from arzule_ingest import ArzuleRun
     from arzule_ingest.sinks import HttpBatchSink
@@ -105,7 +107,7 @@ export ARZULE_PROJECT_ID="your-project-id"
   <Tab title="AutoGen">
     Call instrument once at startup:
 
-    ```python
+    ```python {1-3,8,11,24}
     from arzule_ingest.autogen import instrument_autogen
     from arzule_ingest import ArzuleRun
     from arzule_ingest.sinks import HttpBatchSink
@@ -140,7 +142,7 @@ export ARZULE_PROJECT_ID="your-project-id"
 
 ## Step 4: View your traces
 
-Open your [Arzule dashboard](https://app.arzule.com) to see the captured traces. You'll see:
+Open your [Arzule dashboard](https://app.arzule.com/dashboard/overview) to see the captured traces. You'll see:
 
 - The complete execution timeline
 - Each agent's actions and decisions
