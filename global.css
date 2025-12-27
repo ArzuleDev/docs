@@ -1,0 +1,8 @@
+/* Hide Powered by Mintlify badge */
+[data-testid="powered-by-mintlify"],
+a[href*="mintlify.com"]:has(svg),
+.powered-by-mintlify,
+footer a[href*="mintlify"] {
+  display: none !important;
+}
+
