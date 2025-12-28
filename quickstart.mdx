@@ -47,7 +47,7 @@ export ARZULE_PROJECT_ID="your-project-id"
   <Tab title="CrewAI">
     Add two lines to your `main.py` file - import and init:
 
-    ```python {3,4}
+    ```python {3,4,21}
     #!/usr/bin/env python
     # src/research_crew/main.py
     import arzule_ingest
@@ -68,6 +68,7 @@ export ARZULE_PROJECT_ID="your-project-id"
 
         print("\n\n=== FINAL REPORT ===\n\n")
         print(result.raw)
+        arzule_ingest.shutdown()
 
     if __name__ == "__main__":
         run()
@@ -78,7 +79,7 @@ export ARZULE_PROJECT_ID="your-project-id"
   <Tab title="LangChain">
     Add two lines at the top of your script - import and get the callback handler:
 
-    ```python {1,2,12}
+    ```python {1,2,12,14}
     import arzule_ingest
     handler = arzule_ingest.langchain.instrument_langchain()
 
@@ -91,12 +92,14 @@ export ARZULE_PROJECT_ID="your-project-id"
 
     # Pass the handler to capture traces
     result = chain.invoke({"topic": "AI safety"}, config={"callbacks": [handler]})
+
+    arzule_ingest.shutdown()
     ```
   </Tab>
   <Tab title="AutoGen">
     Add two lines at the top of your script - import and instrument:
 
-    ```python {1,2}
+    ```python {1,2,13}
     import arzule_ingest
     arzule_ingest.autogen.instrument_autogen()
 
@@ -109,9 +112,14 @@ export ARZULE_PROJECT_ID="your-project-id"
 
     # Traces are captured automatically
     user_proxy.initiate_chat(assistant, message="Tell me a joke about AI.")
+    arzule_ingest.shutdown()
     ```
   </Tab>
 </Tabs>
+
+<Tip>
+**About `shutdown()`**: Call `arzule_ingest.shutdown()` at the end of your script to ensure all events are flushed to Arzule. While `shutdown()` is registered with `atexit` and runs automatically on normal process exit, calling it explicitly guarantees events are sent before the script continues - especially important if your process might exit abnormally or you're running multiple agents in one script.
+</Tip>
 
 ## Step 4: View your traces
 
