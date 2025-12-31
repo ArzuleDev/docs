@@ -3,218 +3,38 @@ title: "LangChain Integration"
 description: "Automatic instrumentation for LangChain chains, agents, and LLM applications"
 ---
 
-Arzule provides seamless integration with LangChain. With a callback handler, you get full observability into your chains, agents, tools, and LLM calls.
-
-## Installation
-
-```bash
-pip install arzule-ingest
-```
-
-## Quick setup
-
-Add two lines at the top of your script to get the callback handler:
-
-```python {1,2,12}
-import arzule_ingest
-handler = arzule_ingest.langchain.instrument_langchain()
-
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-
-llm = ChatOpenAI(model="gpt-4")
-prompt = ChatPromptTemplate.from_template("Tell me about {topic}")
-chain = prompt | llm
-
-# Pass the handler to capture traces
-result = chain.invoke({"topic": "AI safety"}, config={"callbacks": [handler]})
-```
-
-That's it - traces flow to Arzule automatically when you run your script.
-
-## What gets captured
-
-The LangChain integration automatically captures:
-
-### LLM calls
-- `llm.call.start` - Prompts sent to the model
-- `llm.call.end` - Responses with token counts
-- `llm.call.error` - Errors with details
-
-### Chain execution
-- `chain.start` - Chain begins with inputs
-- `chain.end` - Chain completes with outputs
-- `chain.error` - Chain failures
-
-### Tool invocations
-- `tool.call.start` - Tool called with inputs
-- `tool.call.end` - Tool returns results
-- `tool.call.error` - Tool failures
-
-### Agent actions
-- `agent.action` - Agent decides to use a tool
-- `agent.finish` - Agent completes with final answer
-
-### Retriever operations
-- `retriever.start` - Retriever query begins
-- `retriever.end` - Documents retrieved
-- `retriever.error` - Retrieval failures
-
-### Agent handoffs
-- Automatic detection of handoff patterns between agents in multi-agent workflows
-
-## Example trace
-
-A typical LangChain agent execution generates a trace like:
-
-```
-chain.start (AgentExecutor)
-├── llm.call.start
-├── llm.call.end
-├── agent.action (search_tool)
-├── tool.call.start (search_tool)
-├── tool.call.end
-├── llm.call.start
-├── llm.call.end
-├── agent.finish
-└── chain.end
-```
-
-## Advanced configuration
-
-### Using with LangChain components
-
-Pass the handler to any LangChain component:
-
-```python
-from arzule_ingest.langchain import instrument_langchain
-from langchain_openai import ChatOpenAI
-
-handler = instrument_langchain()
-
-# Option 1: Pass to model directly
-llm = ChatOpenAI(callbacks=[handler])
-
-# Option 2: Pass via invoke config
-chain.invoke({"input": "..."}, config={"callbacks": [handler]})
-
-# Option 3: Use with agents
-agent_executor.invoke({"input": "..."}, config={"callbacks": [handler]})
-```
-
-### Feature flags
-
-Disable specific event types if needed:
-
-```python
-handler = instrument_langchain(
-    enable_llm_callbacks=True,      # Capture LLM calls
-    enable_chain_callbacks=True,    # Capture chain execution
-    enable_tool_callbacks=True,     # Capture tool invocations
-    enable_agent_callbacks=True,    # Capture agent actions
-    enable_retriever_callbacks=True # Capture retriever operations
-)
-```
-
-### Minimal mode
-
-For reduced event volume, use minimal mode:
-
-```python
-handler = instrument_langchain(mode="minimal")
-```
-
-This disables tool and retriever callbacks while keeping essential lifecycle events.
-
-### Production usage
-
-Send traces to Arzule cloud:
-
-```python
-from arzule_ingest.langchain import instrument_langchain
-from arzule_ingest import ArzuleRun
-from arzule_ingest.sinks import HttpBatchSink
-
-handler = instrument_langchain()
-
-sink = HttpBatchSink(
-    endpoint_url="https://ingest.arzule.com",
-    api_key="your-api-key"
-)
-
-with ArzuleRun(
-    tenant_id="your-tenant-id",
-    project_id="your-project-id",
-    sink=sink
-) as run:
-    result = chain.invoke({"input": "..."}, config={"callbacks": [handler]})
-```
-
-### Local development
-
-Write traces to a local file during development:
-
-```python
-from arzule_ingest.langchain import instrument_langchain
-from arzule_ingest import ArzuleRun
-from arzule_ingest.sinks import JsonlFileSink
-
-handler = instrument_langchain()
-sink = JsonlFileSink("traces/dev.jsonl")
-
-with ArzuleRun(
-    tenant_id="local",
-    project_id="dev",
-    sink=sink
-) as run:
-    result = chain.invoke({"input": "..."}, config={"callbacks": [handler]})
-```
-
-Then view the traces with the CLI:
-
-```bash
-arzule view traces/dev.jsonl
-```
-
-## Supported LangChain versions
-
-| LangChain Version | Support |
-|-------------------|---------|
-| langchain-core 0.1+ | Full support |
-| langchain 0.1+ | Full support |
-| Legacy langchain < 0.1 | Not supported |
-
 <Note>
-The SDK requires langchain-core 0.1.0 or higher. Earlier versions use a different callback architecture.
+LangChain integration is coming soon. We're actively working on support for LangChain and LangGraph workflows.
 </Note>
 
-## Troubleshooting
+## Coming Soon
 
-### Traces not appearing
+LangChain integration will provide:
 
-1. Verify `instrument_langchain()` is called before creating chains
-2. Ensure the handler is passed to the chain via `config={"callbacks": [handler]}`
-3. Check that you're running inside an `ArzuleRun` context
+- Chain execution tracking with inputs and outputs
+- LLM call instrumentation with token counts
+- Tool invocation monitoring
+- Agent action and decision tracking
+- Retriever operation capture
+- Agent handoff detection for multi-agent workflows
+- LangGraph support for graph-based workflows
 
-### Missing agent events
+## Get Notified
 
-Some custom agents may not trigger standard callbacks. Ensure your agent inherits from LangChain base classes.
+Want to know when LangChain integration is available? [Contact us](mailto:support@arzule.com) to get notified when it launches.
 
-### Nested chains
+## Current Integrations
 
-The SDK maintains proper parent-child span relationships for nested chains. If you see flat traces, verify all components receive the callback handler.
-
-## Next steps
+In the meantime, check out our currently available integrations:
 
 <CardGroup cols={2}>
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  Complete getting started guide.
+<Card title="CrewAI" icon="users" href="/integrations/crewai">
+  Full support for CrewAI multi-agent workflows.
 </Card>
 
-<Card title="PII Redaction" icon="shield" href="/configuration/pii-redaction">
-  Protect sensitive data in traces.
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Get started with Arzule.
 </Card>
 
 </CardGroup>
-

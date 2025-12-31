@@ -3,249 +3,38 @@ title: "AutoGen Integration"
 description: "Automatic instrumentation for Microsoft AutoGen multi-agent conversations"
 ---
 
-Arzule provides seamless integration with Microsoft AutoGen. With a single function call, you get full observability into your multi-agent conversations, LLM calls, and tool executions.
-
-## Installation
-
-```bash
-pip install arzule-ingest
-```
-
-## Quick setup
-
-Add two lines at the top of your script - import and instrument:
-
-```python {1,2}
-import arzule_ingest
-arzule_ingest.autogen.instrument_autogen()
-
-import os
-from autogen import AssistantAgent, UserProxyAgent
-
-llm_config = {"config_list": [{"model": "gpt-4", "api_key": os.environ.get("OPENAI_API_KEY")}]}
-assistant = AssistantAgent("assistant", llm_config=llm_config)
-user_proxy = UserProxyAgent("user_proxy", code_execution_config=False)
-
-# Traces are captured automatically
-user_proxy.initiate_chat(assistant, message="Tell me a joke about AI.")
-```
-
-That's it - traces flow to Arzule automatically when you run your script.
-
-## What gets captured
-
-The AutoGen integration automatically captures:
-
-### Message flow
-- `agent.message.send` - Agent sends a message
-- `agent.message.receive` - Agent receives a message
-
-### LLM calls
-- `llm.call.start` - Prompts sent to the model
-- `llm.call.end` - Responses with token usage
-
-### Tool/function execution
-- `tool.call.start` - Function called with arguments
-- `tool.call.end` - Function returns result
-
-### Code execution
-- `code.execution` - Code blocks executed with output and exit code
-
-### Conversation lifecycle
-- `conversation.start` - Chat initiated between agents
-- `conversation.end` - Chat completed with message count
-
-### Agent handoffs
-- Automatic detection when control passes between agents
-- `handoff.complete` events with handoff context
-
-## Example trace
-
-A typical AutoGen conversation generates a trace like:
-
-```
-conversation.start
-├── agent.message.send (user_proxy -> assistant)
-├── agent.message.receive (assistant <- user_proxy)
-├── llm.call.start
-├── llm.call.end
-├── agent.message.send (assistant -> user_proxy)
-├── agent.message.receive (user_proxy <- assistant)
-├── tool.call.start (execute_code)
-├── code.execution
-├── tool.call.end
-├── agent.message.send (user_proxy -> assistant)
-├── llm.call.start
-├── llm.call.end
-└── conversation.end (6 messages)
-```
-
-## Advanced configuration
-
-### Feature flags
-
-Control which events are captured:
-
-```python
-instrument_autogen(
-    enable_message_hooks=True,        # Capture send/receive
-    enable_llm_hooks=True,            # Capture LLM calls
-    enable_tool_hooks=True,           # Capture function executions
-    enable_code_execution_hooks=True, # Capture code blocks
-    enable_conversation_hooks=True,   # Capture conversation lifecycle
-)
-```
-
-### Minimal mode
-
-For reduced event volume, use minimal mode:
-
-```python
-instrument_autogen(mode="minimal")
-```
-
-This keeps message and conversation events but disables LLM, tool, and code execution hooks.
-
-### Production usage
-
-Send traces to Arzule cloud:
-
-```python
-from arzule_ingest.autogen import instrument_autogen
-from arzule_ingest import ArzuleRun
-from arzule_ingest.sinks import HttpBatchSink
-
-instrument_autogen()
-
-sink = HttpBatchSink(
-    endpoint_url="https://ingest.arzule.com",
-    api_key="your-api-key"
-)
-
-with ArzuleRun(
-    tenant_id="your-tenant-id",
-    project_id="your-project-id",
-    sink=sink
-) as run:
-    user_proxy.initiate_chat(assistant, message="Write a Python script")
-```
-
-### Local development
-
-Write traces to a local file during development:
-
-```python
-from arzule_ingest.autogen import instrument_autogen
-from arzule_ingest import ArzuleRun
-from arzule_ingest.sinks import JsonlFileSink
-
-instrument_autogen()
-sink = JsonlFileSink("traces/dev.jsonl")
-
-with ArzuleRun(
-    tenant_id="local",
-    project_id="dev",
-    sink=sink
-) as run:
-    user_proxy.initiate_chat(assistant, message="Hello!")
-```
-
-Then view the traces with the CLI:
-
-```bash
-arzule view traces/dev.jsonl
-```
-
-### Uninstrument
-
-If you need to remove instrumentation (e.g., for testing):
-
-```python
-from arzule_ingest.autogen import uninstrument_autogen
-
-uninstrument_autogen()
-```
-
-## Async support
-
-The AutoGen integration supports both sync and async methods:
-
-```python
-# Sync (automatically instrumented)
-user_proxy.initiate_chat(assistant, message="Hello!")
-
-# Async (also automatically instrumented)
-await user_proxy.a_initiate_chat(assistant, message="Hello!")
-```
-
-Both `send`/`a_send` and `receive`/`a_receive` variants are captured.
-
-## Group chats
-
-AutoGen group chats are fully supported:
-
-```python
-from autogen import GroupChat, GroupChatManager
-
-groupchat = GroupChat(agents=[user_proxy, coder, critic], messages=[])
-manager = GroupChatManager(groupchat=groupchat)
-
-with ArzuleRun(tenant_id="...", project_id="...", sink=sink) as run:
-    user_proxy.initiate_chat(manager, message="Build a web scraper")
-```
-
-The trace will capture:
-- All messages between agents
-- Handoffs as control passes between participants
-- LLM calls from each agent
-- Tool executions
-
-## Supported AutoGen versions
-
-| AutoGen Version | Support |
-|-----------------|---------|
-| pyautogen 0.2+ | Full support |
-| autogen-agentchat 0.4+ | Full support |
-| < 0.2 | Not supported |
-
 <Note>
-The SDK requires pyautogen 0.2.0 or higher. Install with: `pip install pyautogen`
+AutoGen integration is coming soon. We're actively working on support for Microsoft AutoGen multi-agent conversations.
 </Note>
 
-## Troubleshooting
+## Coming Soon
 
-### Traces not appearing
+AutoGen integration will provide:
 
-1. Verify `instrument_autogen()` is called before creating agents
-2. Check that your code runs inside an `ArzuleRun` context
-3. Ensure network access if using `HttpBatchSink`
+- Automatic capture of multi-agent conversations
+- Message flow tracking between agents
+- LLM call instrumentation with token usage
+- Tool and function execution monitoring
+- Code execution capture with output
+- Agent handoff detection
+- Group chat support
 
-### Missing LLM calls
+## Get Notified
 
-LLM hooks capture calls to `_generate_oai_reply`. If you're using custom reply functions, they may not be instrumented automatically.
+Want to know when AutoGen integration is available? [Contact us](mailto:support@arzule.com) to get notified when it launches.
 
-### Agent names showing "unknown"
+## Current Integrations
 
-Ensure your agents have a `name` attribute set:
-
-```python
-assistant = AssistantAgent(
-    name="assistant",  # This name appears in traces
-    llm_config=llm_config
-)
-```
-
-## Next steps
+In the meantime, check out our currently available integrations:
 
 <CardGroup cols={2}>
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  Complete getting started guide.
+<Card title="CrewAI" icon="users" href="/integrations/crewai">
+  Full support for CrewAI multi-agent workflows.
 </Card>
 
-<Card title="PII Redaction" icon="shield" href="/configuration/pii-redaction">
-  Protect sensitive data in traces.
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Get started with Arzule.
 </Card>
 
 </CardGroup>
-

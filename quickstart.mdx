@@ -83,6 +83,10 @@ export ARZULE_PROJECT_ID="your-project-id"
     ```
 
     That's it - run `crewai run` as usual and traces flow to Arzule automatically.
+
+    <Tip>
+    **Tip:** Setting `allow_delegation=True` on your agents produces cleaner traces and better visualizations. When agents can delegate tasks to each other, Arzule captures these handoffs clearly, giving you a much more readable graph of agent interactions.
+    </Tip>
   </Tab>
   <Tab title="LangChain">
     Add two lines at the top of your script - import and get the callback handler:
