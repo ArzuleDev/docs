@@ -28,7 +28,7 @@ uv add arzule-ingest
 </CodeGroup>
 
 <Note>
-This installs support for Claude Code, CrewAI, and LangGraph out of the box.
+The core package includes Claude Code support. For CrewAI or LangGraph, add the extras: `pip install arzule-ingest[crewai]` or `pip install arzule-ingest[langchain]`
 </Note>
 
 ### Upgrading
@@ -80,7 +80,9 @@ export ARZULE_PROJECT_ID="your-project-id"
     </Tip>
   </Tab>
   <Tab title="CrewAI">
-    Add two lines to your `main.py` file - import and init:
+    First, install with CrewAI support: `pip install arzule-ingest[crewai]`
+
+    Then add two lines to your `main.py` file - import and init:
 
     ```python {3,4,21}
     #!/usr/bin/env python
@@ -136,7 +138,9 @@ export ARZULE_PROJECT_ID="your-project-id"
     ```
   </Tab> */}
   <Tab title="LangGraph">
-    Add two lines at the top of your script - import and get the callback handler:
+    First, install with LangChain support: `pip install arzule-ingest[langchain]`
+
+    Then add two lines at the top of your script - import and get the callback handler:
 
     ```python {1,2,22,24}
     import arzule_ingest

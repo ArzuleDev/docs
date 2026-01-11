@@ -7,10 +7,15 @@ description: "Install and configure the Arzule Python SDK"
 
 - Python 3.10 or higher
 - pip, poetry, or uv package manager
+- A virtual environment (recommended)
 
 ## Install the SDK
 
-The SDK includes all framework integrations (CrewAI, LangChain, AutoGen) by default:
+The SDK has a lightweight core with optional framework integrations:
+
+### Core Installation
+
+The core package includes **Claude Code integration** and works on all supported Python versions:
 
 <Tabs>
 <Tab title="pip">
@@ -31,6 +36,45 @@ uv add arzule-ingest
 ```
 </Tab>
 </Tabs>
+
+### With Framework Integrations
+
+For CrewAI, LangChain, or AutoGen support, install with extras:
+
+<Tabs>
+<Tab title="pip">
+```bash
+# Single framework
+pip install arzule-ingest[crewai]
+pip install arzule-ingest[langchain]
+pip install arzule-ingest[autogen]
+
+# Multiple frameworks
+pip install arzule-ingest[crewai,langchain]
+
+# All frameworks
+pip install arzule-ingest[all]
+```
+</Tab>
+
+<Tab title="poetry">
+```bash
+poetry add "arzule-ingest[crewai]"
+poetry add "arzule-ingest[all]"
+```
+</Tab>
+
+<Tab title="uv">
+```bash
+uv add "arzule-ingest[crewai]"
+uv add "arzule-ingest[all]"
+```
+</Tab>
+</Tabs>
+
+<Info>
+Framework extras require Python versions supported by each framework. CrewAI currently requires Python &lt;3.14. The core SDK (including Claude Code) works on Python 3.10-3.14.
+</Info>
 
 ## Configuration
 
@@ -79,13 +123,16 @@ print(arzule_ingest.__version__)
 
 ## What's included
 
-The SDK includes support for all major agent frameworks out of the box:
-
+### Core Package
 - **Claude Code** - Hook-based instrumentation for Anthropic's Claude Code
-- **CrewAI** - Automatic instrumentation for CrewAI agents
-- **LangChain / LangGraph** - Callback-based tracing for chains and agents  
-- **AutoGen** - Automatic instrumentation for Microsoft AutoGen
 - **SOC2 compliance** - Encryption at rest for trace files
+- **CLI tools** - `arzule-claude`, `arzule-claude-install`, trace viewer
+
+### Optional Extras
+- **`[crewai]`** - Automatic instrumentation for CrewAI agents
+- **`[langchain]`** - Callback-based tracing for LangChain/LangGraph
+- **`[autogen]`** - Automatic instrumentation for Microsoft AutoGen
+- **`[all]`** - All framework integrations
 
 ## Next steps
 
