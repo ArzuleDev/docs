@@ -1,0 +1,161 @@
+---
+title: "Claude Code"
+description: "Capture traces from Claude Code (Anthropic's AI coding assistant)"
+---
+
+Get complete observability into your Claude Code sessions with automatic tracing of tool calls, LLM interactions, and turn-by-turn workflows.
+
+## Prerequisites
+
+- Python 3.10 or higher
+- Claude Code installed and working
+- An Arzule account
+
+## Quick Setup (3 steps)
+
+### Step 1: Install the SDK
+
+```bash
+pip install arzule-ingest
+```
+
+### Step 2: Configure credentials
+
+Get your credentials from [app.arzule.com/settings](https://app.arzule.com/dashboard/settings), then run:
+
+```bash
+arzule configure
+```
+
+Enter your API Key, Tenant ID, and Project ID when prompted.
+
+### Step 3: Install hooks
+
+```bash
+arzule claude install
+```
+
+That's it. Start using Claude Code normally and traces will appear in your Arzule dashboard.
+
+## How it works
+
+Arzule installs hooks into Claude Code's `~/.claude/settings.json` that capture events during your coding sessions:
+
+- **Session lifecycle** - Session start/end
+- **Turns** - Each prompt-response cycle (user prompt to completion)
+- **Tool calls** - File reads, writes, terminal commands, search operations
+- **Handoffs** - When Claude delegates to subagents
+
+Each turn (from user prompt to stop) is treated as a discrete "run" in Arzule, giving you clean separation of work units within long-running sessions.
+
+## Verification
+
+Check that everything is set up correctly:
+
+```bash
+arzule claude status
+```
+
+You should see:
+
+```
+Claude Code Integration Status
+========================================
+Installed: Yes
+Settings Path: ~/.claude/settings.json
+Hooks installed: 9
+  - SessionStart
+  - SessionEnd
+  - UserPromptSubmit
+  - PreToolUse
+  - PostToolUse
+  - SubagentStop
+  - Stop
+  - PreCompact
+  - Notification
+
+Configuration (~/.arzule/config):
+  ARZULE_API_KEY: Set
+  ARZULE_TENANT_ID: Set
+  ARZULE_PROJECT_ID: Set
+
+  Ready! Traces will be sent to your Arzule dashboard.
+```
+
+## View your traces
+
+Open your [Arzule dashboard](https://app.arzule.com/dashboard/overview) to see captured traces. Each turn shows:
+
+- Complete tool call timeline with inputs/outputs
+- LLM request and response details
+- Execution flow and handoffs
+- File operations and code changes
+
+## Alternative: Shell integration
+
+For additional OTel metrics (token usage, costs), set up shell integration:
+
+```bash
+arzule setup
+```
+
+This adds environment variables to your shell config (`~/.zshrc` or `~/.bashrc`). After restarting your terminal or running `source ~/.zshrc`, all `claude` commands will automatically send metrics to Arzule.
+
+## Uninstalling
+
+To remove Arzule hooks from Claude Code:
+
+```bash
+arzule claude uninstall
+```
+
+To remove shell integration:
+
+```bash
+arzule setup-remove
+```
+
+## Project-level installation
+
+Install hooks for a specific project instead of globally:
+
+```bash
+arzule claude install --project /path/to/project
+```
+
+This creates `.claude/settings.json` in the project directory.
+
+## Troubleshooting
+
+### Hooks installed but no traces appearing
+
+1. Check your configuration: `arzule config`
+2. Verify hooks are installed: `arzule claude status`
+3. Check for local trace files in `~/.arzule/traces/` (traces save here if backend is unreachable)
+
+### Configuration not found
+
+Run `arzule configure` to set up your credentials. You can find them at [app.arzule.com/settings](https://app.arzule.com/dashboard/settings).
+
+### Reinstalling hooks
+
+If hooks seem corrupted, force reinstall:
+
+```bash
+arzule claude uninstall
+arzule claude install
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Dashboard" icon="chart-line" href="https://app.arzule.com/dashboard/overview">
+  View your Claude Code traces and analytics.
+</Card>
+
+<Card title="Concepts: Runs" icon="play" href="/concepts/runs">
+  Understand how turns map to runs in Arzule.
+</Card>
+
+</CardGroup>

@@ -1,0 +1,355 @@
+---
+title: "LangGraph Integration"
+description: "Deep observability for LangGraph graph-based multi-agent applications"
+---
+
+Arzule provides comprehensive instrumentation for LangGraph applications. Capture every graph execution, node transition, LLM call, and agent handoff with minimal code changes.
+
+## Installation
+
+```bash
+pip install arzule-ingest langgraph langchain-core
+```
+
+## Quick setup
+
+Add two lines to instrument your LangGraph application:
+
+```python {1,2}
+import arzule_ingest
+arzule_ingest.init()
+
+from langgraph.graph import StateGraph
+from typing import TypedDict
+
+class State(TypedDict):
+    messages: list
+    response: str
+
+def chatbot(state: State) -> dict:
+    response = llm.invoke(state["messages"])
+    return {"response": response.content}
+
+# Build your graph
+graph = StateGraph(State)
+graph.add_node("chatbot", chatbot)
+graph.add_edge("__start__", "chatbot")
+compiled = graph.compile()
+
+# Traces are captured automatically
+result = compiled.invoke({"messages": [("user", "Hello!")]})
+```
+
+## What gets captured
+
+The LangGraph integration automatically captures comprehensive trace data:
+
+### Graph lifecycle
+- `graph.start` - Graph execution begins with input state
+- `graph.end` - Graph completes with final output or error
+
+### Node execution
+- `agent.start` - Each node begins execution
+- `agent.end` - Node completes with output
+- Step numbers, triggers, and execution paths
+- Parallel execution metadata
+
+### LLM interactions
+- `llm.call.start` - Prompts sent to the model
+- `llm.call.end` - Responses with token usage
+- Support for OpenAI, Anthropic, and other providers
+
+### Tool usage
+- `tool.call.start` - Tool invocation with inputs
+- `tool.call.end` - Tool results or errors
+
+### Checkpoint operations
+- `checkpoint.save` - State persisted to storage
+- `checkpoint.load` - State restored from checkpoint
+
+### Agent handoffs
+- `handoff.proposed` - Agent routes to another agent
+- `handoff.ack` - Target agent acknowledges
+- `handoff.complete` - Handoff task finished
+
+### Parallel execution
+- `parallel.fanout` - Fan-out to multiple nodes via Send API
+- `parallel.fanin` - Results aggregated from parallel branches
+
+## Handoff detection
+
+The SDK automatically detects agent handoffs through three patterns:
+
+### Command-based routing
+
+```python
+from langgraph.types import Command
+
+def router_node(state):
+    if needs_research(state):
+        return Command(goto="researcher", update={"task": "research this"})
+    return Command(goto="writer")
+```
+
+### State-based routing
+
+```python
+def router_node(state):
+    return {"next_agent": "researcher", "data": "..."}
+```
+
+### Conditional edge routing
+
+```python
+graph.add_conditional_edges(
+    "router",
+    lambda s: s["next_agent"],
+    {"researcher": "researcher", "writer": "writer"}
+)
+```
+
+All three patterns generate `handoff.proposed`, `handoff.ack`, and `handoff.complete` events automatically.
+
+## Example trace
+
+A multi-agent LangGraph execution generates a trace like:
+
+```
+graph.start
+├── agent.start (router)
+│   ├── llm.call.start
+│   ├── llm.call.end
+│   └── agent.end
+├── handoff.proposed (router → researcher)
+├── handoff.ack
+├── agent.start (researcher)
+│   ├── llm.call.start
+│   ├── llm.call.end
+│   ├── tool.call.start (WebSearch)
+│   ├── tool.call.end
+│   └── agent.end
+├── handoff.complete
+├── handoff.proposed (researcher → writer)
+├── handoff.ack
+├── agent.start (writer)
+│   ├── llm.call.start
+│   ├── llm.call.end
+│   └── agent.end
+├── handoff.complete
+└── graph.end
+```
+
+## Parallel execution tracking
+
+LangGraph's Send API enables map-reduce patterns. The SDK tracks parallel fan-out and fan-in:
+
+```python
+from langgraph.types import Send
+
+def distribute_work(state):
+    return [
+        Send("worker", {"task": task})
+        for task in state["tasks"]
+    ]
+```
+
+This generates:
+- `parallel.fanout` - Shows source node, target nodes, and task count
+- Multiple parallel `agent.start/end` events
+- `parallel.fanin` - When results are aggregated
+
+## Advanced configuration
+
+### Explicit instrumentation
+
+For fine-grained control, use the explicit API:
+
+```python
+from arzule_ingest import ArzuleRun
+from arzule_ingest.sinks import HttpBatchSink
+from arzule_ingest.langgraph import instrument_langgraph
+
+# Instrument LangGraph (call once at startup)
+handler = instrument_langgraph()
+
+# Create a sink
+sink = HttpBatchSink(
+    endpoint_url="https://ingest.arzule.com",
+    api_key="your-api-key"
+)
+
+# Run with explicit context
+with ArzuleRun(
+    tenant_id="your-tenant-id",
+    project_id="your-project-id",
+    sink=sink
+) as run:
+    result = compiled.invoke(
+        {"input": "..."},
+        config={"callbacks": [handler]}
+    )
+```
+
+### Instrumentation modes
+
+Choose between full and minimal instrumentation:
+
+```python
+# Full instrumentation (default) - captures everything
+handler = instrument_langgraph(mode="global")
+
+# Minimal - only graph, node, and LLM events
+handler = instrument_langgraph(mode="minimal")
+```
+
+### Custom callback configuration
+
+Fine-tune which events to capture:
+
+```python
+handler = instrument_langgraph(
+    enable_graph_callbacks=True,
+    enable_node_callbacks=True,
+    enable_llm_callbacks=True,
+    enable_tool_callbacks=False,      # Disable tool tracking
+    enable_checkpoint_callbacks=False  # Disable checkpoint tracking
+)
+```
+
+### Local development
+
+Write traces to a local file during development:
+
+```python
+from arzule_ingest import ArzuleRun
+from arzule_ingest.sinks import JsonlFileSink
+from arzule_ingest.langgraph import instrument_langgraph
+
+handler = instrument_langgraph()
+sink = JsonlFileSink("traces/dev.jsonl")
+
+with ArzuleRun(
+    tenant_id="local",
+    project_id="dev",
+    sink=sink
+) as run:
+    result = compiled.invoke(
+        {"messages": [("user", "Hello")]},
+        config={"callbacks": [handler]}
+    )
+```
+
+View traces with the CLI:
+
+```bash
+arzule view traces/dev.jsonl
+```
+
+### With checkpointing
+
+Checkpoint events are captured automatically when using LangGraph's persistence:
+
+```python
+from langgraph.checkpoint.memory import MemorySaver
+
+checkpointer = MemorySaver()
+compiled = graph.compile(checkpointer=checkpointer)
+
+result = compiled.invoke(
+    {"input": "..."},
+    config={
+        "callbacks": [handler],
+        "configurable": {"thread_id": "user-123"}
+    }
+)
+```
+
+## Token usage tracking
+
+The SDK extracts token usage from multiple LLM response formats:
+
+| Provider | Format |
+|----------|--------|
+| OpenAI/LiteLLM | `response.usage.{prompt_tokens, completion_tokens}` |
+| Anthropic | `response.usage.{input_tokens, output_tokens}` |
+| LangChain | `response.llm_output["token_usage"]` |
+| ChatGeneration | `message.usage_metadata` |
+
+Token counts appear in `llm.call.end` events:
+
+```json
+{
+  "event_type": "llm.call.end",
+  "attrs_compact": {
+    "model": "gpt-4",
+    "prompt_tokens": 150,
+    "completion_tokens": 89,
+    "total_tokens": 239
+  }
+}
+```
+
+## Supported versions
+
+| Package | Version | Support |
+|---------|---------|---------|
+| langgraph | 0.2.0+ | Full support |
+| langchain-core | 0.2.0+ | Full support |
+
+<Note>
+The SDK requires LangGraph 0.2.0 or higher for full callback support.
+</Note>
+
+## Troubleshooting
+
+### Traces not appearing
+
+1. Verify `arzule_ingest.init()` is called before graph execution
+2. Ensure the handler is passed to `invoke()`:
+   ```python
+   result = compiled.invoke(input, config={"callbacks": [handler]})
+   ```
+3. Check environment variables are set correctly
+
+### Missing handoff events
+
+Handoffs are detected through:
+- `Command(goto="...")` return values
+- State fields: `next_agent`, `next`, `goto`, `route`
+- Conditional edge routing via `langgraph_triggers` metadata
+
+If using custom routing, ensure your state includes one of these patterns.
+
+### Duplicate events
+
+The handler is singleton - calling `instrument_langgraph()` multiple times returns the same instance. If you see duplicates, check that you're not creating multiple handler instances manually.
+
+### High memory usage
+
+The handler tracks span IDs for event correlation. These are cleaned up when events complete. For long-running graphs:
+
+1. Ensure all nodes complete (no hanging operations)
+2. Use minimal mode to reduce tracking overhead
+3. Check for unhandled exceptions preventing cleanup
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Complete getting started guide.
+</Card>
+
+<Card title="CrewAI Integration" icon="users" href="/integrations/crewai">
+  Multi-agent orchestration with CrewAI.
+</Card>
+
+<Card title="Traces Concepts" icon="diagram-project" href="/concepts/traces">
+  Understanding trace structure.
+</Card>
+
+<Card title="PII Redaction" icon="shield" href="/configuration/pii-redaction">
+  Protect sensitive data in traces.
+</Card>
+
+</CardGroup>
