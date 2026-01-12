@@ -68,7 +68,7 @@
       "anchors": [
         {
           "anchor": "GitHub",
-          "href": "https://github.com/jeffarzule/arzule-ingest",
+          "href": "https://github.com/ArzuleDev/arzule-ingest",
           "icon": "github"
         }
       ]
@@ -104,7 +104,7 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/jeffarzule/arzule-ingest",
+      "github": "https://github.com/ArzuleDev/arzule-ingest",
       "linkedin": "https://www.linkedin.com/company/arzulehq/posts/?feedView=all"
     }
   },
