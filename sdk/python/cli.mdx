@@ -1,9 +1,9 @@
 ---
 title: "CLI Reference"
-description: "Command-line tools for viewing and analyzing traces"
+description: "Command-line tools for viewing, analyzing, and serving traces"
 ---
 
-The Arzule SDK includes a CLI for working with local trace files during development.
+The Arzule SDK includes a CLI for working with local trace files during development, as well as a self-hosted server for receiving traces.
 
 ## Installation
 
@@ -11,6 +11,12 @@ The CLI is included with the SDK:
 
 ```bash
 pip install arzule-ingest
+```
+
+For self-hosted server capabilities:
+
+```bash
+pip install arzule-ingest[server]
 ```
 
 Verify installation:
@@ -161,6 +167,173 @@ Errors:
 2 errors found.
 ```
 
+## Self-Hosted Server
+
+The `arzule-server` command starts a minimal HTTP server for receiving and storing traces locally. This is ideal for air-gapped environments, local development, or when you want full control over your trace data.
+
+### `arzule-server`
+
+Start the self-hosted trace server.
+
+```bash
+arzule-server [options]
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-H, --host` | `127.0.0.1` | Host to bind to |
+| `-p, --port` | `8080` | Port to listen on |
+| `-s, --storage` | `./traces` | Storage directory for trace files |
+| `--reload` | - | Enable auto-reload for development |
+| `-w, --workers` | `1` | Number of worker processes |
+
+#### Examples
+
+```bash
+# Start with defaults (localhost:8080)
+arzule-server
+
+# Bind to all interfaces on port 9000
+arzule-server --host 0.0.0.0 --port 9000
+
+# Custom storage directory
+arzule-server --host 0.0.0.0 --port 8080 --storage /data/traces
+
+# Development mode with auto-reload
+arzule-server --reload
+
+# Production with multiple workers
+arzule-server --host 0.0.0.0 --port 8080 --workers 4
+```
+
+### Server Endpoints
+
+The self-hosted server exposes the following HTTP endpoints:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/ingest` | Receive and store trace events |
+| `GET` | `/health` | Health check endpoint |
+| `GET` | `/runs` | List all stored runs |
+| `GET` | `/runs/{run_id}` | Get events for a specific run |
+| `GET` | `/runs/{run_id}/timeline` | Get timeline view for a run |
+| `DELETE` | `/runs/{run_id}` | Delete a specific run |
+
+#### Ingest endpoint
+
+```bash
+curl -X POST http://localhost:8080/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"trace_id": "abc123", "event_type": "run.start", ...}'
+```
+
+#### Health check
+
+```bash
+curl http://localhost:8080/health
+# {"status": "healthy", "version": "0.1.0"}
+```
+
+#### List runs
+
+```bash
+curl http://localhost:8080/runs
+# {"runs": [{"run_id": "abc123", "started_at": "...", "event_count": 42}, ...]}
+```
+
+### Docker Deployment
+
+Deploy the self-hosted server using Docker for production environments.
+
+#### Dockerfile
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN pip install arzule-ingest[server]
+
+EXPOSE 8080
+
+VOLUME /data/traces
+
+CMD ["arzule-server", "--host", "0.0.0.0", "--port", "8080", "--storage", "/data/traces", "--workers", "4"]
+```
+
+#### Build and run
+
+```bash
+# Build the image
+docker build -t arzule-server .
+
+# Run the container
+docker run -d \
+  --name arzule-server \
+  -p 8080:8080 \
+  -v /path/to/traces:/data/traces \
+  arzule-server
+```
+
+#### Docker Compose
+
+```yaml
+version: "3.8"
+
+services:
+  arzule-server:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - trace-data:/data/traces
+    environment:
+      - ARZULE_LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  trace-data:
+```
+
+### Connecting to the server
+
+Configure your SDK to send traces to the self-hosted server:
+
+```python
+from arzule_ingest import ArzuleTracer
+
+tracer = ArzuleTracer(
+    endpoint="http://localhost:8080/ingest",
+    # No API key required for self-hosted
+)
+```
+
+Or via environment variables:
+
+```bash
+export ARZULE_ENDPOINT=http://localhost:8080/ingest
+export ARZULE_API_KEY=  # Leave empty for self-hosted
+```
+
+### `arzule-hook`
+
+Lightweight entry point for Claude Code hooks. This command is used internally by the SDK when integrating with Claude Code's hook system.
+
+```bash
+arzule-hook [hook-data]
+```
+
+<Note>
+This command is typically not invoked directly. It is registered as a hook handler and called automatically by Claude Code during code generation sessions.
+</Note>
+
 ## Piping and scripting
 
 The CLI works well with Unix pipes:
@@ -187,6 +360,10 @@ arzule view traces.jsonl -f json | jq 'select(.event_type | startswith("tool."))
 
 <CardGroup cols={2}>
 
+<Card title="Self-Hosting Guide" icon="server" href="/sdk/python/self-hosting">
+  Deploy your own trace server.
+</Card>
+
 <Card title="Sinks" icon="database" href="/sdk/python/sinks">
   Write traces to local files.
 </Card>
@@ -195,16 +372,8 @@ arzule view traces.jsonl -f json | jq 'select(.event_type | startswith("tool."))
   Get started with trace collection.
 </Card>
 
+<Card title="Claude Code Integration" icon="code" href="/sdk/python/claude-code">
+  Integrate with Claude Code hooks.
+</Card>
+
 </CardGroup>
-
-
-
-
-
-
-
-
-
-
-
-

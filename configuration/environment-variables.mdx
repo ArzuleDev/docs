@@ -3,11 +3,21 @@ title: "Environment Variables"
 description: "Complete reference for Arzule SDK configuration"
 ---
 
-The Arzule SDK is configured primarily through environment variables. This provides a secure, consistent way to manage credentials across environments.
+The Arzule SDK is configured primarily through environment variables. This provides a secure, consistent way to manage credentials across environments. The SDK supports multiple deployment modes including cloud, local development, and self-hosted installations.
 
 ## Required variables
 
-These must be set for the SDK to send traces to Arzule:
+The required variables depend on your deployment mode:
+
+| Mode | Required Variables |
+|------|-------------------|
+| Cloud (default) | `ARZULE_API_KEY`, `ARZULE_TENANT_ID`, `ARZULE_PROJECT_ID` |
+| Self-hosted | `ARZULE_SELFHOSTED_ENDPOINT`, authentication variables |
+| Local | None (traces stored locally) |
+
+### Cloud mode credentials
+
+For cloud deployments, these must be set for the SDK to send traces to Arzule:
 
 | Variable | Description |
 |----------|-------------|
@@ -19,15 +29,99 @@ These must be set for the SDK to send traces to Arzule:
 You can find these credentials in your [Arzule dashboard settings](https://app.arzule.com/dashboard/settings). Generate a new API key if you don't have one.
 </Tip>
 
+## Deployment mode variables
+
+These variables control how and where traces are sent:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ARZULE_MODE` | Deployment mode: `cloud`, `local`, `selfhosted`, or `multi` | Auto-detected |
+| `ARZULE_SELFHOSTED_ENDPOINT` | Custom endpoint URL for selfhosted mode | - |
+| `ARZULE_AUTH_TYPE` | Authentication type for selfhosted: `bearer`, `basic`, `header`, `none` | `bearer` |
+| `ARZULE_AUTH_VALUE` | Auth token/credentials for selfhosted mode | - |
+| `ARZULE_OUTPUT_PATH` | Storage path for local mode | `~/.arzule/traces/` |
+| `ARZULE_STORAGE_DIR` | Server storage directory (for arzule-server) | `./data` |
+
+<Info>
+If `ARZULE_MODE` is not set, the SDK auto-detects the mode based on which variables are configured:
+- If `ARZULE_API_KEY` is set: `cloud` mode
+- If `ARZULE_SELFHOSTED_ENDPOINT` is set: `selfhosted` mode
+- Otherwise: `local` mode
+</Info>
+
 ## Optional variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ARZULE_INGEST_URL` | Ingest endpoint URL | `https://ingest.arzule.com` |
+| `ARZULE_INGEST_URL` | Ingest endpoint URL (cloud mode) | `https://ingest.arzule.com` |
 | `ARZULE_BATCH_SIZE` | Number of events per batch | `100` |
 | `ARZULE_FLUSH_INTERVAL` | Seconds between batch flushes | `5` |
 | `ARZULE_REDACT_SECRETS` | Enable PII/secret redaction | `true` |
 | `ARZULE_DEBUG` | Enable debug logging | `false` |
+
+## Configuration examples by mode
+
+### Cloud mode (default)
+
+Connect to Arzule's managed cloud service:
+
+```bash
+export ARZULE_MODE="cloud"
+export ARZULE_API_KEY="arz_live_abc123..."
+export ARZULE_TENANT_ID="550e8400-e29b-41d4-a716-446655440000"
+export ARZULE_PROJECT_ID="660e8400-e29b-41d4-a716-446655440000"
+```
+
+### Local mode
+
+Store traces locally for development and debugging:
+
+```bash
+export ARZULE_MODE="local"
+export ARZULE_OUTPUT_PATH="/path/to/traces"  # Optional, defaults to ~/.arzule/traces/
+```
+
+<Tip>
+Local mode is ideal for development. Traces are stored as JSON files that you can inspect directly or import later.
+</Tip>
+
+### Self-hosted mode
+
+Send traces to your own Arzule server instance:
+
+```bash
+export ARZULE_MODE="selfhosted"
+export ARZULE_SELFHOSTED_ENDPOINT="https://arzule.internal.company.com"
+export ARZULE_AUTH_TYPE="bearer"
+export ARZULE_AUTH_VALUE="your-server-token"
+```
+
+Authentication options for self-hosted:
+
+| Auth Type | Description | Example `ARZULE_AUTH_VALUE` |
+|-----------|-------------|----------------------------|
+| `bearer` | Bearer token in Authorization header | `your-token` |
+| `basic` | Basic auth (base64 encoded) | `dXNlcjpwYXNz` |
+| `header` | Custom header value (set via `X-Arzule-Auth`) | `custom-key` |
+| `none` | No authentication | - |
+
+### Multi mode
+
+Send traces to both cloud and a secondary destination:
+
+```bash
+export ARZULE_MODE="multi"
+export ARZULE_API_KEY="arz_live_abc123..."
+export ARZULE_TENANT_ID="550e8400-e29b-41d4-a716-446655440000"
+export ARZULE_PROJECT_ID="660e8400-e29b-41d4-a716-446655440000"
+export ARZULE_SELFHOSTED_ENDPOINT="https://arzule.internal.company.com"
+export ARZULE_AUTH_TYPE="bearer"
+export ARZULE_AUTH_VALUE="your-server-token"
+```
+
+<Info>
+Multi mode is useful for compliance scenarios where you need traces in both Arzule cloud and your own infrastructure.
+</Info>
 
 ## Setting environment variables
 
@@ -121,18 +215,33 @@ arzule_ingest.init(
 )
 ```
 
+For self-hosted mode:
+
+```python
+import arzule_ingest
+
+arzule_ingest.init(
+    mode="selfhosted",
+    selfhosted_endpoint="https://arzule.internal.company.com",
+    auth_type="bearer",
+    auth_value="your-token",
+)
+```
+
 ## Environment-specific configuration
 
 Use different credentials per environment:
 
 ```bash
 # development
-export ARZULE_PROJECT_ID="dev-project-id"
+export ARZULE_MODE="local"
 
 # staging
+export ARZULE_MODE="cloud"
 export ARZULE_PROJECT_ID="staging-project-id"
 
 # production
+export ARZULE_MODE="cloud"
 export ARZULE_PROJECT_ID="prod-project-id"
 ```
 
@@ -145,15 +254,21 @@ Check your configuration is correct:
 ```python
 import os
 
-# Print current config (redact the key in logs)
+# Print current config (redact secrets in logs)
+print(f"Mode: {os.getenv('ARZULE_MODE', 'auto-detect')}")
 print(f"Tenant: {os.getenv('ARZULE_TENANT_ID')}")
 print(f"Project: {os.getenv('ARZULE_PROJECT_ID')}")
 print(f"API Key set: {bool(os.getenv('ARZULE_API_KEY'))}")
+print(f"Self-hosted endpoint: {os.getenv('ARZULE_SELFHOSTED_ENDPOINT', 'not set')}")
 ```
 
 ## Next steps
 
 <CardGroup cols={2}>
+
+<Card title="Self-Hosting Guide" icon="server" href="/self-hosting/quickstart">
+  Deploy your own Arzule server instance.
+</Card>
 
 <Card title="PII Redaction" icon="shield" href="/configuration/pii-redaction">
   Configure what sensitive data gets filtered.
@@ -163,5 +278,8 @@ print(f"API Key set: {bool(os.getenv('ARZULE_API_KEY'))}")
   Start capturing traces.
 </Card>
 
-</CardGroup>
+<Card title="Local Development" icon="laptop-code" href="/guides/local-development">
+  Tips for using local mode during development.
+</Card>
 
+</CardGroup>

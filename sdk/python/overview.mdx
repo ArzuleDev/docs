@@ -17,7 +17,27 @@ This includes all framework integrations (CrewAI, LangChain, AutoGen) and SOC2 c
 
 ### `arzule_ingest.init()`
 
-Initialize the SDK with automatic instrumentation:
+Initialize the SDK with automatic instrumentation. The SDK supports multiple deployment modes for different use cases.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `api_key` | `str` | API key for cloud/selfhosted modes. Defaults to `ARZULE_API_KEY` env var |
+| `tenant_id` | `str` | Tenant identifier. Defaults to `ARZULE_TENANT_ID` env var |
+| `project_id` | `str` | Project identifier. Defaults to `ARZULE_PROJECT_ID` env var |
+| `mode` | `str` | Deployment mode: `"cloud"`, `"local"`, `"selfhosted"`, or `"multi"` |
+| `endpoint` | `str` | Custom endpoint URL for selfhosted mode |
+| `auth_type` | `str` | Authentication type for selfhosted: `"bearer"`, `"basic"`, `"header"`, `"none"` |
+| `auth_value` | `str` | Authentication token or value for selfhosted mode |
+| `output_path` | `str` | Local file path for local mode storage |
+| `destinations` | `list` | List of destination configs for multi mode |
+| `redact_secrets` | `bool` | Enable PII redaction (default: `False`) |
+| `batch_size` | `int` | Events per batch (default: `100`) |
+
+#### Cloud Mode (Default)
+
+Send traces to the Arzule cloud platform:
 
 ```python
 import arzule_ingest
@@ -28,6 +48,88 @@ arzule_ingest.init(
     project_id="...",    # Optional: defaults to ARZULE_PROJECT_ID env var
     redact_secrets=True, # Optional: enable PII redaction
     batch_size=100,      # Optional: events per batch
+)
+
+# Or explicitly specify cloud mode
+arzule_ingest.init(
+    mode="cloud",
+    api_key="arz_your_api_key",
+)
+```
+
+#### Local Mode
+
+Store traces locally without any network calls:
+
+```python
+import arzule_ingest
+
+arzule_ingest.init(
+    mode="local",
+    output_path="./traces/my_traces.jsonl",  # Local file path
+    redact_secrets=True,                      # Optional: still redacts PII
+)
+```
+
+#### Self-Hosted Mode
+
+Send traces to your own Arzule server deployment:
+
+```python
+import arzule_ingest
+
+arzule_ingest.init(
+    mode="selfhosted",
+    endpoint="https://arzule.internal.company.com/ingest",
+    auth_type="bearer",           # Options: bearer, basic, header, none
+    auth_value="your_auth_token",
+    tenant_id="my-tenant",
+    project_id="my-project",
+)
+
+# With basic auth
+arzule_ingest.init(
+    mode="selfhosted",
+    endpoint="https://arzule.internal.company.com/ingest",
+    auth_type="basic",
+    auth_value="username:password",
+)
+
+# With custom header auth
+arzule_ingest.init(
+    mode="selfhosted",
+    endpoint="https://arzule.internal.company.com/ingest",
+    auth_type="header",
+    auth_value="X-Custom-Auth:secret_value",
+)
+```
+
+#### Multi Mode
+
+Send traces to multiple destinations simultaneously:
+
+```python
+import arzule_ingest
+
+arzule_ingest.init(
+    mode="multi",
+    destinations=[
+        {
+            "type": "cloud",
+            "api_key": "arz_production_key",
+        },
+        {
+            "type": "local",
+            "output_path": "./backup_traces.jsonl",
+        },
+        {
+            "type": "selfhosted",
+            "endpoint": "https://arzule.internal.company.com/ingest",
+            "auth_type": "bearer",
+            "auth_value": "internal_token",
+        },
+    ],
+    redact_secrets=True,  # Applies to all destinations
 )
 ```
 
@@ -110,11 +212,17 @@ arzule stats traces.jsonl
 arzule_ingest/
 ├── __init__.py      # init(), version
 ├── run.py           # ArzuleRun context manager
+├── mode.py          # Deployment mode configuration
 ├── sinks/           # Output destinations
 │   ├── base.py      # BaseSink interface
 │   ├── http.py      # HttpBatchSink
 │   ├── jsonl.py     # JsonlFileSink
 │   └── composite.py # CompositeSink
+├── server/          # Self-hosted backend server
+│   ├── __init__.py  # Server initialization
+│   ├── app.py       # FastAPI application
+│   ├── routes.py    # Ingest API routes
+│   └── storage.py   # Pluggable storage backends
 ├── crewai/          # CrewAI integration
 │   └── normalize.py # Event normalization
 ├── redaction.py     # PII redaction

@@ -8,8 +8,8 @@ This guide walks you through installing the Arzule SDK and capturing your first 
 ## Prerequisites
 
 - Python 3.10 or higher
-- An agent framework (Claude Code, CrewAI, or LangGraph)
-- An Arzule account with API credentials
+- An agent framework (Claude Code, CrewAI, LangGraph, or AutoGen)
+- An Arzule account with API credentials (for cloud mode), or use [local mode](#local-development) to get started without an account
 
 ## Step 1: Install the SDK
 
@@ -28,7 +28,12 @@ uv add arzule-ingest
 </CodeGroup>
 
 <Note>
-The core package includes Claude Code support. For CrewAI or LangGraph, add the extras: `pip install arzule-ingest[crewai]` or `pip install arzule-ingest[langchain]`
+The core package includes Claude Code support. For framework integrations, add the appropriate extras:
+- **CrewAI**: `pip install arzule-ingest[crewai]`
+- **LangGraph/LangChain**: `pip install arzule-ingest[langchain]`
+- **AutoGen**: `pip install arzule-ingest[autogen]`
+- **Self-hosted server**: `pip install arzule-ingest[server]`
+- **All frameworks**: `pip install arzule-ingest[all]`
 </Note>
 
 ### Upgrading
@@ -51,13 +56,41 @@ uv add --upgrade arzule-ingest
 
 ## Step 2: Set environment variables
 
-Configure your Arzule credentials. You can find these in your [Arzule dashboard settings](https://app.arzule.com/dashboard/settings).
+The SDK supports multiple deployment modes. Choose the one that fits your needs:
 
-```bash
-export ARZULE_API_KEY="your-api-key"
-export ARZULE_TENANT_ID="your-tenant-id"
-export ARZULE_PROJECT_ID="your-project-id"
-```
+<Tabs>
+  <Tab title="Cloud (Production)">
+    Send traces to Arzule cloud. Find your credentials in your [Arzule dashboard settings](https://app.arzule.com/dashboard/settings).
+
+    ```bash
+    export ARZULE_API_KEY="your-api-key"
+    export ARZULE_TENANT_ID="your-tenant-id"
+    export ARZULE_PROJECT_ID="your-project-id"
+    ```
+  </Tab>
+  <Tab title="Local (Development)">
+    Store traces locally without any cloud setup. Great for getting started or offline development.
+
+    ```bash
+    export ARZULE_MODE="local"
+    # Optional: customize storage path (default: ~/.arzule/traces/)
+    export ARZULE_OUTPUT_PATH="./traces/"
+    ```
+  </Tab>
+  <Tab title="Self-Hosted">
+    Send traces to your own backend server.
+
+    ```bash
+    export ARZULE_MODE="selfhosted"
+    export ARZULE_SELFHOSTED_ENDPOINT="http://localhost:8080/ingest"
+    # Optional: add authentication
+    export ARZULE_AUTH_TYPE="bearer"
+    export ARZULE_AUTH_VALUE="your-token"
+    ```
+
+    See the [Self-Hosting Guide](/configuration/self-hosting) for running your own trace server.
+  </Tab>
+</Tabs>
 
 ## Step 3: Initialize and run
 
@@ -175,8 +208,10 @@ export ARZULE_PROJECT_ID="your-project-id"
     **Tip:** For multi-agent graphs, use `Command(goto="agent_name")` or state-based routing with `next_agent` to get automatic handoff tracking between agents.
     </Tip>
   </Tab>
-  {/* <Tab title="AutoGen">
-    Add two lines at the top of your script - import and instrument:
+  <Tab title="AutoGen">
+    First, install with AutoGen support: `pip install arzule-ingest[autogen]`
+
+    Then add two lines at the top of your script - import and instrument:
 
     ```python {1,2,13}
     import arzule_ingest
@@ -193,7 +228,11 @@ export ARZULE_PROJECT_ID="your-project-id"
     user_proxy.initiate_chat(assistant, message="Tell me a joke about AI.")
     arzule_ingest.shutdown()
     ```
-  </Tab> */}
+
+    <Tip>
+    **Note:** AutoGen v0.7+ (AG2) is auto-instrumented when you call `arzule_ingest.init()`. The explicit `instrument_autogen()` call shown above is for AutoGen v0.2.x.
+    </Tip>
+  </Tab>
 </Tabs>
 
 <Tip>
@@ -211,28 +250,42 @@ Open your [Arzule dashboard](https://app.arzule.com/dashboard/overview) to see t
 
 ## Local development
 
-During development, write traces to a local file instead of the cloud:
+During development, use local mode to store traces without cloud setup:
+
+```bash
+export ARZULE_MODE="local"
+```
+
+Then use `arzule_ingest.init()` as normal - traces are stored in `~/.arzule/traces/` by default:
 
 ```python
-from arzule_ingest import ArzuleRun
-from arzule_ingest.sinks import JsonlFileSink
+import arzule_ingest
+arzule_ingest.init()  # Automatically uses local file storage
 
-sink = JsonlFileSink("traces/dev.jsonl")
-
-with ArzuleRun(tenant_id="local", project_id="dev", sink=sink) as run:
-    # Your agent code here
-    pass
+# Your agent code here - traces are captured automatically
 ```
 
 View traces with the CLI:
 
 ```bash
-arzule view traces/dev.jsonl
+# List recent trace files
+ls ~/.arzule/traces/
+
+# View a specific trace
+arzule view ~/.arzule/traces/run_abc123.jsonl
 ```
+
+<Tip>
+You can customize the storage path with `ARZULE_OUTPUT_PATH` or start a local server with `arzule-server` for a more production-like setup. See [Self-Hosting](/configuration/self-hosting) for details.
+</Tip>
 
 ## Next steps
 
 <CardGroup cols={2}>
+
+<Card title="Self-Hosting" icon="server" href="/configuration/self-hosting">
+  Run your own trace server or use local storage.
+</Card>
 
 <Card title="Claude Code Integration" icon="terminal" href="/integrations/claude-code">
   Full Claude Code instrumentation guide.
@@ -246,12 +299,12 @@ arzule view traces/dev.jsonl
   Full LangGraph instrumentation guide.
 </Card>
 
-{/* <Card title="LangChain Integration" icon="link" href="/integrations/langchain">
-  Full LangChain instrumentation guide.
-</Card>
-
 <Card title="AutoGen Integration" icon="robot" href="/integrations/autogen">
   Full AutoGen instrumentation guide.
-</Card> */}
+</Card>
+
+<Card title="Environment Variables" icon="gear" href="/configuration/environment-variables">
+  Full configuration reference.
+</Card>
 
 </CardGroup>

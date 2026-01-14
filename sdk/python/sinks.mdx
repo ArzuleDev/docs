@@ -35,11 +35,64 @@ sink = HttpBatchSink(
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `endpoint_url` | `str` | Required | Ingest API URL |
-| `api_key` | `str` | Required | API key for authentication |
+| `api_key` | `str` | Optional | API key for authentication (backward compatible) |
+| `auth_type` | `str` | `"bearer"` | Authentication type: `bearer`, `basic`, `header`, or `none` |
+| `auth_value` | `str` | Optional | Auth token or credentials |
 | `batch_size` | `int` | `100` | Maximum events per batch |
 | `flush_interval` | `float` | `5.0` | Seconds between automatic flushes |
 | `timeout` | `float` | `30.0` | HTTP request timeout |
 | `max_retries` | `int` | `3` | Retry attempts for failed requests |
+
+### Authentication
+
+The `HttpBatchSink` supports multiple authentication methods via the `auth_type` and `auth_value` parameters. The legacy `api_key` parameter continues to work for backward compatibility.
+
+#### Bearer token (default)
+
+Used for Arzule cloud and services expecting `Authorization: Bearer <token>` headers.
+
+```python
+sink = HttpBatchSink(
+    endpoint_url="https://ingest.arzule.com",
+    auth_type="bearer",
+    auth_value="your-api-key"
+)
+```
+
+#### Basic authentication
+
+For services using HTTP Basic Auth. Provide credentials as `username:password`.
+
+```python
+sink = HttpBatchSink(
+    endpoint_url="https://my-backend.com/ingest",
+    auth_type="basic",
+    auth_value="username:password"
+)
+```
+
+#### Custom header authentication
+
+For services requiring custom authentication headers. Provide headers as a JSON string.
+
+```python
+sink = HttpBatchSink(
+    endpoint_url="https://my-backend.com/ingest",
+    auth_type="header",
+    auth_value='{"X-Api-Key": "my-key"}'
+)
+```
+
+#### No authentication
+
+For local development or internal services that do not require authentication.
+
+```python
+sink = HttpBatchSink(
+    endpoint_url="http://localhost:8080/ingest",
+    auth_type="none"
+)
+```
 
 ### Automatic batching
 

@@ -1,0 +1,634 @@
+---
+title: "Self-Hosting & Deployment Modes"
+description: "Run Arzule traces locally, on your own infrastructure, or in multi-destination configurations"
+---
+
+Arzule supports four deployment modes to match your infrastructure needs: cloud, local, self-hosted, and multi-destination. Choose the mode that fits your security requirements, network constraints, and operational preferences.
+
+## Deployment modes overview
+
+| Mode | Use case | Network required |
+|------|----------|------------------|
+| `cloud` | Production with Arzule-managed infrastructure | Yes |
+| `local` | Development, air-gapped environments, offline work | No |
+| `selfhosted` | On-premise deployment, data sovereignty requirements | Internal only |
+| `multi` | Redundancy, hybrid cloud, debugging in production | Varies |
+
+## Mode auto-detection
+
+The SDK automatically detects the appropriate mode based on environment variables. You can also set the mode explicitly.
+
+**Detection priority:**
+
+1. `ARZULE_MODE` environment variable (explicit override)
+2. `ARZULE_SELFHOSTED_ENDPOINT` present → `selfhosted`
+3. `ARZULE_API_KEY` present → `cloud`
+4. Otherwise → `local` (graceful fallback)
+
+<Tip>
+The automatic fallback to local mode ensures traces are never lost. Even without any configuration, traces are written to `~/.arzule/traces/` so you can recover them later.
+</Tip>
+
+## Cloud mode
+
+Cloud mode sends traces to Arzule's managed infrastructure. This is the default for production deployments.
+
+### Configuration
+
+```bash
+export ARZULE_MODE="cloud"  # Optional - auto-detected from API key
+export ARZULE_API_KEY="arz_live_abc123..."
+export ARZULE_TENANT_ID="550e8400-e29b-41d4-a716-446655440000"
+export ARZULE_PROJECT_ID="660e8400-e29b-41d4-a716-446655440000"
+```
+
+### Required variables
+
+| Variable | Format | Description |
+|----------|--------|-------------|
+| `ARZULE_API_KEY` | `arz_live_...` or `arz_test_...` | API key from dashboard |
+| `ARZULE_TENANT_ID` | UUID | Your organization identifier |
+| `ARZULE_PROJECT_ID` | UUID | Project to associate traces with |
+
+<Note>
+Find your credentials in the [Arzule dashboard settings](https://app.arzule.com/dashboard/settings). Tenant and project IDs are UUIDs in the format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`.
+</Note>
+
+### Python usage
+
+```python
+import arzule_ingest
+
+# Auto-detects cloud mode from ARZULE_API_KEY
+arzule_ingest.init()
+```
+
+## Local mode
+
+Local mode writes traces to JSONL files on disk. No network connection is required.
+
+### Configuration
+
+```bash
+export ARZULE_MODE="local"
+# Optional: customize the output directory
+export ARZULE_LOCAL_PATH="~/.arzule/traces/"
+```
+
+### Default behavior
+
+- Traces are written to `~/.arzule/traces/`
+- Each run creates a file named `{run_id}.jsonl`
+- Files are human-readable JSON Lines format
+- No authentication required
+
+### Python usage
+
+```python
+import arzule_ingest
+
+# Explicit local mode
+arzule_ingest.init(mode="local")
+
+# Or set ARZULE_MODE=local and call init() without arguments
+arzule_ingest.init()
+```
+
+### Viewing local traces
+
+Use the CLI to inspect traces:
+
+<CodeGroup>
+```bash Timeline view
+arzule view ~/.arzule/traces/
+```
+
+```bash Specific run
+arzule view ~/.arzule/traces/abc123-run-id.jsonl
+```
+
+```bash Statistics
+arzule stats ~/.arzule/traces/
+```
+</CodeGroup>
+
+<Tip>
+Local mode is ideal for development, CI/CD pipelines, and air-gapped environments. You can later upload local traces to Arzule cloud using `arzule upload`.
+</Tip>
+
+## Self-hosted mode
+
+Self-hosted mode sends traces to your own HTTP backend. This gives you full control over data storage and processing.
+
+### Configuration
+
+```bash
+export ARZULE_MODE="selfhosted"
+export ARZULE_SELFHOSTED_ENDPOINT="https://traces.internal.company.com/ingest"
+```
+
+### Authentication options
+
+Self-hosted mode supports four authentication types:
+
+<Tabs>
+  <Tab title="Bearer Token">
+    Standard bearer token authentication.
+
+    ```bash
+    export ARZULE_SELFHOSTED_ENDPOINT="https://traces.internal.company.com/ingest"
+    export ARZULE_SELFHOSTED_AUTH_TYPE="bearer"
+    export ARZULE_SELFHOSTED_AUTH_VALUE="your-secret-token"
+    ```
+
+    Sends header: `Authorization: Bearer your-secret-token`
+  </Tab>
+  <Tab title="Basic Auth">
+    HTTP Basic authentication with username and password.
+
+    ```bash
+    export ARZULE_SELFHOSTED_ENDPOINT="https://traces.internal.company.com/ingest"
+    export ARZULE_SELFHOSTED_AUTH_TYPE="basic"
+    export ARZULE_SELFHOSTED_AUTH_VALUE="username:password"
+    ```
+
+    Sends header: `Authorization: Basic base64(username:password)`
+  </Tab>
+  <Tab title="Custom Header">
+    Custom header authentication for non-standard APIs.
+
+    ```bash
+    export ARZULE_SELFHOSTED_ENDPOINT="https://traces.internal.company.com/ingest"
+    export ARZULE_SELFHOSTED_AUTH_TYPE="header"
+    export ARZULE_SELFHOSTED_AUTH_VALUE='{"X-Api-Key": "my-key", "X-Tenant": "acme"}'
+    ```
+
+    Sends the specified headers with each request.
+  </Tab>
+  <Tab title="No Auth">
+    For internal services that do not require authentication.
+
+    ```bash
+    export ARZULE_SELFHOSTED_ENDPOINT="http://localhost:8080/ingest"
+    export ARZULE_SELFHOSTED_AUTH_TYPE="none"
+    ```
+
+    <Warning>
+    Only use `none` for local development or services behind a secure network boundary.
+    </Warning>
+  </Tab>
+</Tabs>
+
+### Python usage
+
+```python
+import arzule_ingest
+
+# Auto-detects from ARZULE_SELFHOSTED_ENDPOINT
+arzule_ingest.init()
+
+# Or configure programmatically
+arzule_ingest.init(
+    mode="selfhosted",
+    selfhosted_endpoint="https://traces.internal.company.com/ingest",
+    selfhosted_auth_type="bearer",
+    selfhosted_auth_value="your-token"
+)
+```
+
+## Multi mode
+
+Multi mode sends traces to multiple destinations simultaneously. Use this for redundancy, hybrid deployments, or debugging production issues.
+
+### Configuration
+
+```bash
+export ARZULE_MODE="multi"
+export ARZULE_MULTI_DESTINATIONS='[
+  {"type": "cloud", "api_key": "arz_live_...", "tenant_id": "...", "project_id": "..."},
+  {"type": "local", "path": "/var/log/arzule/"},
+  {"type": "selfhosted", "endpoint": "https://backup.internal.com/ingest", "auth_type": "bearer", "auth_value": "..."}
+]'
+```
+
+### Python usage
+
+```python
+import arzule_ingest
+from arzule_ingest.sinks import CompositeSink, HttpBatchSink, JsonlFileSink
+
+# Using CompositeSink directly
+sink = CompositeSink([
+    HttpBatchSink(
+        endpoint_url="https://ingest.arzule.com",
+        api_key="arz_live_..."
+    ),
+    JsonlFileSink("/var/log/arzule/backup.jsonl"),
+    HttpBatchSink(
+        endpoint_url="https://traces.internal.company.com/ingest",
+        auth_type="bearer",
+        auth_value="internal-token"
+    )
+])
+
+arzule_ingest.init(sink=sink)
+```
+
+<Tip>
+Multi mode is useful for:
+- Keeping local backups while sending to cloud
+- Migrating between backends without downtime
+- Debugging production by also writing to local files
+</Tip>
+
+## Self-hosted server
+
+Arzule provides an optional self-hosted server for receiving and storing traces on your infrastructure.
+
+### Installation
+
+```bash
+pip install arzule-ingest[server]
+```
+
+### Running the server
+
+<CodeGroup>
+```bash Basic
+arzule-server --host 0.0.0.0 --port 8080 --storage /data/traces
+```
+
+```bash With authentication
+arzule-server \
+  --host 0.0.0.0 \
+  --port 8080 \
+  --storage /data/traces \
+  --auth-type bearer \
+  --auth-token "your-secret-token"
+```
+
+```bash Production settings
+arzule-server \
+  --host 0.0.0.0 \
+  --port 8080 \
+  --storage /data/traces \
+  --auth-type bearer \
+  --auth-token "$ARZULE_SERVER_TOKEN" \
+  --workers 4 \
+  --max-batch-size 1000
+```
+</CodeGroup>
+
+### Server options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--host` | `127.0.0.1` | Bind address |
+| `--port` | `8080` | Listen port |
+| `--storage` | `./traces` | Directory for trace files |
+| `--auth-type` | `none` | Authentication type: `bearer`, `basic`, `header`, `none` |
+| `--auth-token` | - | Token for bearer auth |
+| `--workers` | `1` | Number of worker processes |
+| `--max-batch-size` | `500` | Maximum events per request |
+
+### API endpoints
+
+The self-hosted server exposes these endpoints:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/ingest` | Receive trace events (batch) |
+| `GET` | `/health` | Health check |
+| `GET` | `/runs` | List all runs |
+| `GET` | `/runs/{run_id}` | Get events for a specific run |
+| `DELETE` | `/runs/{run_id}` | Delete a run and its events |
+
+### Example requests
+
+<CodeGroup>
+```bash Health check
+curl http://localhost:8080/health
+```
+
+```bash List runs
+curl -H "Authorization: Bearer your-token" \
+  http://localhost:8080/runs
+```
+
+```bash Get run details
+curl -H "Authorization: Bearer your-token" \
+  http://localhost:8080/runs/abc123-run-id
+```
+</CodeGroup>
+
+## Docker deployment
+
+Deploy the self-hosted server using Docker.
+
+### Dockerfile
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN pip install arzule-ingest[server]
+
+EXPOSE 8080
+
+VOLUME ["/data/traces"]
+
+ENV ARZULE_SERVER_TOKEN=""
+
+CMD ["arzule-server", \
+     "--host", "0.0.0.0", \
+     "--port", "8080", \
+     "--storage", "/data/traces", \
+     "--auth-type", "bearer", \
+     "--auth-token", "${ARZULE_SERVER_TOKEN}"]
+```
+
+### Docker Compose
+
+```yaml
+version: '3.8'
+
+services:
+  arzule-server:
+    image: arzule/server:latest
+    # Or build from Dockerfile:
+    # build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - arzule-traces:/data/traces
+    environment:
+      - ARZULE_SERVER_TOKEN=${ARZULE_SERVER_TOKEN}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  arzule-traces:
+```
+
+### Running with Docker
+
+<CodeGroup>
+```bash Docker run
+docker run -d \
+  --name arzule-server \
+  -p 8080:8080 \
+  -v arzule-traces:/data/traces \
+  -e ARZULE_SERVER_TOKEN="your-secret-token" \
+  arzule/server:latest
+```
+
+```bash Docker Compose
+# Create .env file with ARZULE_SERVER_TOKEN
+echo "ARZULE_SERVER_TOKEN=your-secret-token" > .env
+
+docker-compose up -d
+```
+</CodeGroup>
+
+## Kubernetes deployment
+
+Deploy to Kubernetes for production-grade self-hosting.
+
+### Secret
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: arzule-server-secret
+  namespace: observability
+type: Opaque
+stringData:
+  auth-token: "your-secret-token"
+```
+
+### Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arzule-server
+  namespace: observability
+  labels:
+    app: arzule-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: arzule-server
+  template:
+    metadata:
+      labels:
+        app: arzule-server
+    spec:
+      containers:
+        - name: arzule-server
+          image: arzule/server:latest
+          ports:
+            - containerPort: 8080
+          args:
+            - "--host=0.0.0.0"
+            - "--port=8080"
+            - "--storage=/data/traces"
+            - "--auth-type=bearer"
+            - "--workers=2"
+          env:
+            - name: ARZULE_SERVER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: arzule-server-secret
+                  key: auth-token
+          volumeMounts:
+            - name: traces-storage
+              mountPath: /data/traces
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: traces-storage
+          persistentVolumeClaim:
+            claimName: arzule-traces-pvc
+```
+
+### Service
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: arzule-server
+  namespace: observability
+spec:
+  selector:
+    app: arzule-server
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP
+```
+
+### PersistentVolumeClaim
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: arzule-traces-pvc
+  namespace: observability
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: standard
+```
+
+### Ingress (optional)
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: arzule-server-ingress
+  namespace: observability
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - traces.internal.company.com
+      secretName: arzule-tls
+  rules:
+    - host: traces.internal.company.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: arzule-server
+                port:
+                  number: 8080
+```
+
+<Warning>
+When exposing the server externally, always use TLS and authentication. Never run with `--auth-type none` in production.
+</Warning>
+
+## Environment variable reference
+
+### Mode selection
+
+| Variable | Values | Description |
+|----------|--------|-------------|
+| `ARZULE_MODE` | `cloud`, `local`, `selfhosted`, `multi` | Explicit mode override |
+
+### Cloud mode
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ARZULE_API_KEY` | Yes | API key for authentication |
+| `ARZULE_TENANT_ID` | Yes | Tenant UUID |
+| `ARZULE_PROJECT_ID` | Yes | Project UUID |
+| `ARZULE_INGEST_URL` | No | Custom ingest endpoint (default: `https://ingest.arzule.com`) |
+
+### Local mode
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ARZULE_LOCAL_PATH` | No | Output directory (default: `~/.arzule/traces/`) |
+
+### Self-hosted mode
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ARZULE_SELFHOSTED_ENDPOINT` | Yes | Your server's ingest URL |
+| `ARZULE_SELFHOSTED_AUTH_TYPE` | No | `bearer`, `basic`, `header`, `none` (default: `none`) |
+| `ARZULE_SELFHOSTED_AUTH_VALUE` | No | Token, credentials, or JSON headers |
+
+### Multi mode
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ARZULE_MULTI_DESTINATIONS` | Yes | JSON array of destination configs |
+
+## Troubleshooting
+
+### Mode not detected correctly
+
+Check the detection order:
+
+```python
+import os
+
+# Debug mode detection
+print(f"ARZULE_MODE: {os.getenv('ARZULE_MODE')}")
+print(f"ARZULE_SELFHOSTED_ENDPOINT: {os.getenv('ARZULE_SELFHOSTED_ENDPOINT')}")
+print(f"ARZULE_API_KEY set: {bool(os.getenv('ARZULE_API_KEY'))}")
+```
+
+Set `ARZULE_MODE` explicitly to override auto-detection.
+
+### Self-hosted server not receiving events
+
+1. Verify the server is running: `curl http://your-server:8080/health`
+2. Check authentication credentials match
+3. Ensure network connectivity from client to server
+4. Review server logs for errors
+
+### Local traces not appearing
+
+1. Check the output directory exists and is writable
+2. Verify `ARZULE_LOCAL_PATH` is set correctly
+3. Ensure `arzule_ingest.shutdown()` is called to flush events
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Environment Variables" icon="gear" href="/configuration/environment-variables">
+  Complete configuration reference.
+</Card>
+
+<Card title="Sinks" icon="database" href="/sdk/python/sinks">
+  Learn about sink configuration and custom destinations.
+</Card>
+
+<Card title="PII Redaction" icon="shield" href="/configuration/pii-redaction">
+  Configure sensitive data protection.
+</Card>
+
+<Card title="CLI Reference" icon="terminal" href="/sdk/python/cli">
+  Command-line tools for viewing and managing traces.
+</Card>
+
+</CardGroup>
