@@ -11,7 +11,7 @@ Get complete observability into your Claude Code sessions with automatic tracing
 - Claude Code installed and working
 - An Arzule account
 
-## Quick Setup (3 steps)
+## Quick Setup
 
 ### Step 1: Install the SDK
 
@@ -27,19 +27,50 @@ Get your credentials from [app.arzule.com/settings](https://app.arzule.com/dashb
 arzule configure
 ```
 
-Enter your API Key, Tenant ID, and Project ID when prompted.
+Enter your API Key, Tenant ID, and Project ID when prompted. This saves to `~/.arzule/config`.
 
 ### Step 3: Install hooks
 
-```bash
-arzule claude install
-```
+Choose between **project-level** (recommended) or **global** setup:
+
+<Tabs>
+  <Tab title="Project-Level (Recommended)">
+    Project-level setup keeps hooks and config isolated per-project. Each project can have its own Arzule project/credentials.
+
+    ```bash
+    cd your-project
+    arzule init
+    ```
+
+    This creates:
+    - `.claude/settings.local.json` — Claude Code hooks for this project
+    - `.arzule/config` — Project-specific credentials (copied from global)
+
+    <Tip>
+    Add `.arzule/` to your `.gitignore` to avoid committing credentials.
+    </Tip>
+  </Tab>
+  <Tab title="Global">
+    Global setup applies to all projects. Simpler, but all traces go to the same Arzule project.
+
+    ```bash
+    arzule claude install
+    ```
+
+    This installs hooks to `~/.claude/settings.json` and uses `~/.arzule/config` for all projects.
+  </Tab>
+</Tabs>
 
 That's it. Start using Claude Code normally and traces will appear in your Arzule dashboard.
 
 ## How it works
 
-Arzule installs hooks into Claude Code's `~/.claude/settings.json` that capture events during your coding sessions:
+Arzule installs hooks into Claude Code's settings that capture events during your coding sessions:
+
+- **Project-level**: `.claude/settings.local.json` + `.arzule/config` in your project
+- **Global**: `~/.claude/settings.json` + `~/.arzule/config` in your home directory
+
+Events captured:
 
 - **Session lifecycle** - Session start/end
 - **Turns** - Each prompt-response cycle (user prompt to completion)
@@ -116,15 +147,24 @@ To remove shell integration:
 arzule setup-remove
 ```
 
-## Project-level installation
+## Project-level vs Global
 
-Install hooks for a specific project instead of globally:
+| Setup | Hooks Location | Config Location | Use Case |
+|-------|----------------|-----------------|----------|
+| `arzule init` | `.claude/settings.local.json` | `.arzule/config` | Per-project isolation (recommended) |
+| `arzule claude install` | `~/.claude/settings.json` | `~/.arzule/config` | Simple setup, all projects share config |
+
+**Config priority**: Project-level `.arzule/config` takes precedence over global `~/.arzule/config`. This lets you use different Arzule projects for different code repos.
+
+### Migrating from global to project-level
+
+If you have global hooks and want to switch to project-level:
 
 ```bash
-arzule claude install --project /path/to/project
+arzule migrate
 ```
 
-This creates `.claude/settings.json` in the project directory.
+This removes global hooks and installs project-level hooks in the current directory.
 
 ## Troubleshooting
 

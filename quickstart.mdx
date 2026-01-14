@@ -96,15 +96,41 @@ The SDK supports multiple deployment modes. Choose the one that fits your needs:
 
 <Tabs>
   <Tab title="Claude Code">
-    For Claude Code, use the CLI to configure and install hooks:
+    For Claude Code, use the CLI to configure and install hooks. Choose between **global** (all projects) or **project-level** (recommended) setup:
 
-    ```bash
-    # Configure your credentials (interactive)
-    arzule configure
+    <Tabs>
+      <Tab title="Project-Level (Recommended)">
+        Project-level setup keeps configuration isolated per-project. Each project gets its own hooks and credentials.
 
-    # Install hooks into Claude Code
-    arzule claude install
-    ```
+        ```bash
+        # One-time: Configure global credentials (stored in ~/.arzule/config)
+        arzule configure
+
+        # Per-project: Initialize hooks and copy config to project
+        cd your-project
+        arzule init
+        ```
+
+        This creates:
+        - `.claude/settings.local.json` — Claude Code hooks
+        - `.arzule/config` — Project-specific credentials (copied from global)
+
+        <Tip>
+        Add `.arzule/` to your `.gitignore` to avoid committing credentials.
+        </Tip>
+      </Tab>
+      <Tab title="Global">
+        Global setup applies to all projects. Simpler, but all traces go to the same Arzule project.
+
+        ```bash
+        # Configure credentials globally
+        arzule configure
+
+        # Install hooks globally
+        arzule claude install
+        ```
+      </Tab>
+    </Tabs>
 
     That's it. Use Claude Code normally and traces are captured automatically with each turn.
 
